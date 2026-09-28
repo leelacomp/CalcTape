@@ -1,0 +1,889 @@
+<!-- 26092607 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CalcTape - Multi-Sheet Paper Tape</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <style>
+    :root {
+      --bg-window: #eef2f6; --bg-tape: #ffffff; --border-color: #cbd5e1;
+      --border-dark: #94a3b8; --text-main: #0f172a; --text-muted: #64748b;
+      --accent-blue: #2563eb; --accent-tax: #047857;
+      --font-mono: "Consolas", "Courier New", monospace;
+      --tape-font-size: 14px; --line-height: 24px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background-color: var(--bg-window); color: var(--text-main);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none;
+    }
+    .tab-bar { background: #e2e8f0; padding: 4px 6px 0; display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border-color); }
+    .tab-btn {
+      flex: 1; min-width: 0; background: #cbd5e1; border: 1px solid var(--border-color); border-bottom: none;
+      padding: 5px 2px; font-size: 11px; font-weight: 600; color: #475569; cursor: pointer;
+      border-radius: 5px 5px 0 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+      transition: background 0.1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tab-btn:hover { background: #e2e8f0; color: var(--text-main); }
+    .tab-btn.active { background: #ffffff; color: var(--accent-blue); border-color: var(--border-color); padding-top: 6px; margin-bottom: -1px; font-weight: 700; }
+    .toolbar { background: #ffffff; border-bottom: 1px solid var(--border-color); padding: 4px 6px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+    .tool-btn {
+      background: white; border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 3px;
+      font-size: 11px; font-weight: 500; color: var(--text-main); cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; gap: 2px; height: 25px; min-width: 0; white-space: nowrap; transition: all 0.08s;
+    }
+    .tool-btn:hover { background: #f1f5f9; border-color: var(--border-dark); }
+    .tool-btn:active { background: #e2e8f0; }
+    .tax-select-container { display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 600; color: var(--text-muted); }
+    .tax-select { padding: 1px 3px; font-size: 11px; font-weight: 700; color: var(--accent-tax); background: white; border: 1px solid var(--border-color); border-radius: 3px; cursor: pointer; height: 24px; }
+    .workspace { display: flex; flex: 1; overflow: hidden; background: #e2e8f0; position: relative; }
+    .tape-container { flex: 1; min-width: 0; background: var(--bg-tape); margin: 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border-dark); display: flex; flex-direction: row; overflow: hidden; position: relative; }
+    .tape-gutter { width: 40px; min-width: 40px; background: #f8fafc; border-right: 1px solid #e2e8f0; padding: 8px 6px 8px 0; font-family: var(--font-mono); font-size: calc(var(--tape-font-size) * 0.85); line-height: var(--line-height); color: #94a3b8; text-align: right; user-select: none; overflow: hidden; pointer-events: none; }
+    .tape-editor { flex: 1; padding: 8px 12px; font-family: var(--font-mono); font-size: var(--tape-font-size); line-height: var(--line-height); color: #0f172a; background: transparent; border: none; outline: none; resize: none; overflow: auto; white-space: pre; tab-size: 4; font-variant-numeric: tabular-nums; user-select: text; }
+    .tape-editor::selection { background: #b4d5fe; color: #0f172a; }
+    
+    .notepad-container { flex: 1; background: #ffffff; margin: 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border-dark); display: none; flex-direction: column; overflow: hidden; }
+    .notepad-toolbar { background: #f8fafc; border-bottom: 1px solid var(--border-color); padding: 6px 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .notepad-editor { flex: 1; width: 100%; padding: 14px 18px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b; border: none; outline: none; resize: none; overflow: auto; user-select: text; }
+    
+    .rent-container { flex: 1; background: #ffffff; margin: 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border-dark); display: none; flex-direction: column; overflow-y: auto; padding: 20px; }
+    .rent-header { font-size: 14px; color: var(--text-main); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; font-weight: 600; }
+    .rent-grid { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: center; font-size: 13px; max-width: 500px; }
+    .rent-input { padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-family: inherit; font-size: 13px; outline: none; }
+    .rent-input:focus { border-color: var(--accent-blue); }
+    
+    .numpad-panel { width: 195px; min-width: 195px; background: #f1f5f9; border-left: 1px solid var(--border-dark); display: flex; flex-direction: column; padding: 6px; gap: 4px; }
+    .numpad-header { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 700; color: #475569; padding: 2px 4px 4px; border-bottom: 1px solid var(--border-color); }
+    .numpad-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .pad-btn { font-family: inherit; font-size: 13px; font-weight: 600; color: #1e293b; background: white; border: 1px solid #cbd5e1; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.08s, transform 0.05s; height: 34px; user-select: none; }
+    .pad-btn:hover { background: #f8fafc; border-color: #94a3b8; }
+    .pad-btn:active { background: #e2e8f0; transform: scale(0.97); }
+    .btn-clear { background: #ea580c; color: white; border-color: #c2410c; }
+    .btn-clear:hover { background: #c2410c; }
+    .btn-tax { background: #e6fffa; color: #047857; border-color: #a7f3d0; font-weight: 700; }
+    .btn-tax:hover { background: #ccfbf1; }
+    .btn-op { background: #e2e8f0; color: #0f172a; font-size: 15px; }
+    .btn-subtotal { grid-column: span 2; background: #2563eb; color: white; border-color: #1d4ed8; font-size: 14px; }
+    .btn-subtotal:hover { background: #1d4ed8; }
+    .statusbar { background: #ffffff; border-top: 1px solid var(--border-color); padding: 4px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-weight: 600; color: #334155; }
+    .statusbar-group { display: flex; gap: 8px; align-items: center; }
+    .grand-total-tag { font-size: 14px; color: var(--accent-blue); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .numpad-panel.hidden { display: none; }
+    #toast { position: fixed; bottom: 42px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f8fafc; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 999; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="1" title="Sheet 1 (Alt+1)">S1</button>
+    <button class="tab-btn" data-tab="2" title="Sheet 2 (Alt+2)">S2</button>
+    <button class="tab-btn" data-tab="3" title="Sheet 3 (Alt+3)">S3</button>
+    <button class="tab-btn" data-tab="4" title="Sheet 4 (Alt+4)">S4</button>
+    <button class="tab-btn" data-tab="5" title="Dedicated Notepad (Alt+5)">📝 Note</button>
+    <button class="tab-btn" data-tab="6" title="Rent Calculator (Alt+6)">📅 Rent</button>
+  </nav>
+
+  <header class="toolbar" id="calcToolbar">
+    <button class="tool-btn" id="btnNewTape" title="Clear current sheet (Shift+Ctrl+Backspace)">📄 Clear</button>
+    <button class="tool-btn" id="btnUndo" title="Undo (Ctrl+Z)">↶ Undo</button>
+    <button class="tool-btn" id="btnRedo" title="Redo (Ctrl+Y)">↷ Redo</button>
+    <button class="tool-btn" id="btnCopyTape" title="Copy calculation (Ctrl+C)">📋 Copy</button>
+    <button class="tool-btn" id="btnAlignTape" title="Align decimal walls">🪄 Align</button>
+    <button class="tool-btn" id="btnSubtotalBar" title="Insert subtotal (=)">═ Sub</button>
+    <button class="tool-btn" id="btnToggleNumpad" title="Toggle numeric keypad">🔢 Pad</button>
+    <div class="tax-select-container">
+      <span>Tax:</span>
+      <select id="taxRateSelect" class="tax-select">
+        <option value="5">5%</option>
+        <option value="12">12%</option>
+        <option value="18" selected>18%</option>
+        <option value="28">28%</option>
+      </select>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="tape-container" id="tapeContainer">
+      <div class="tape-gutter" id="tapeGutter">1</div>
+      <textarea class="tape-editor" id="tapeEditor" spellcheck="false"></textarea>
+    </section>
+
+    <section class="notepad-container" id="notepadContainer">
+      <div class="notepad-toolbar">
+        <button class="tool-btn" id="btnProperCase">🔠 Proper Case</button>
+        <button class="tool-btn" id="btnSentenceCase">Sentence case</button>
+        <button class="tool-btn" id="btnUpperCase">UPPERCASE</button>
+        <button class="tool-btn" id="btnLowerCase">lowercase</button>
+        <div style="margin-left: auto; display: flex; gap: 4px;">
+          <button class="tool-btn" id="btnCopyNote">📋 Copy</button>
+          <button class="tool-btn" id="btnClearNote">🗑 Clear</button>
+        </div>
+      </div>
+      <textarea id="notepadEditor" class="notepad-editor" spellcheck="true" placeholder="Type or paste notes here..."></textarea>
+    </section>
+
+    <section class="rent-container" id="rentContainer">
+      <h2 class="rent-header">Rent Duration Calculator</h2>
+      <div class="rent-grid">
+        <label>Start Date:</label>
+        <input type="text" id="rentStart" class="rent-input" placeholder="DD/MM/YY" maxlength="10">
+        <label>End Date:</label>
+        <input type="text" id="rentEnd" class="rent-input" placeholder="DD/MM/YY" maxlength="10">
+        <label>Monthly Rate (₹):</label>
+        <input type="number" id="rentRate" value="2450" class="rent-input">
+        <label></label>
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: 5px;">
+          <input type="checkbox" id="rentInclusive" checked>
+          <span>Include end date (add 1 day)</span>
+        </label>
+      </div>
+      <div style="margin-top: 15px; margin-bottom: 25px;">
+        <button class="tool-btn" id="btnCalcRent" style="padding: 6px 20px; height: auto; font-size: 12px; background: var(--accent-blue); color: white; border: none;">Calculate Rent</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; max-width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label style="font-size: 13px; font-weight: 600;">Result Format:</label>
+          <button class="tool-btn" id="btnCopyRent">📋 Copy Output</button>
+        </div>
+        <textarea id="rentOutput" readonly style="width: 100%; height: 60px; padding: 10px; font-family: var(--font-mono); font-size: 13px; border: 1px solid var(--border-color); border-radius: 3px; background: #f8fafc; resize: none;" placeholder="Output will appear here..."></textarea>
+        <div id="rentBreakdown" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;"></div>
+      </div>
+    </section>
+
+    <aside class="numpad-panel" id="numpadPanel">
+      <div class="numpad-header">
+        <span>NUM PAD</span>
+        <span style="font-size: 10px; color:#64748b;">F8: Tax+ | F9: Tax-</span>
+      </div>
+      <div class="numpad-grid">
+        <button class="pad-btn btn-clear" data-key="AC" title="Clear sheet">AC</button>
+        <button class="pad-btn" data-key="CE" title="Clear current line">CE</button>
+        <button class="pad-btn btn-tax" data-key="TAX+" title="Add Tax (Shortcut: 'F8')">TAX +</button>
+        <button class="pad-btn btn-tax" data-key="TAX-" title="Deduct Tax (Shortcut: 'F9')">TAX -</button>
+        <button class="pad-btn" data-key="7">7</button>
+        <button class="pad-btn" data-key="8">8</button>
+        <button class="pad-btn" data-key="9">9</button>
+        <button class="pad-btn btn-op" data-key="/">÷</button>
+        <button class="pad-btn" data-key="4">4</button>
+        <button class="pad-btn" data-key="5">5</button>
+        <button class="pad-btn" data-key="6">6</button>
+        <button class="pad-btn btn-op" data-key="*">×</button>
+        <button class="pad-btn" data-key="1">1</button>
+        <button class="pad-btn" data-key="2">2</button>
+        <button class="pad-btn" data-key="3">3</button>
+        <button class="pad-btn btn-op" data-key="-">−</button>
+        <button class="pad-btn" data-key="0">0</button>
+        <button class="pad-btn" data-key="00">00</button>
+        <button class="pad-btn" data-key=".">.</button>
+        <button class="pad-btn btn-op" data-key="+">+</button>
+        <button class="pad-btn" data-key="⌫">⌫</button>
+        <button class="pad-btn btn-subtotal" data-key="=">= Subtotal</button>
+        <button class="pad-btn" id="btnTabNote">Tab</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="statusbar">
+    <div id="calcStatusWrap" style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
+      <div class="statusbar-group"><span id="lineCountLabel">0 lines</span></div>
+      <div class="statusbar-group" style="align-items: center; gap: 4px;">
+        <span style="font-size: 10px; color: #64748b;">Font: <span id="fontSizeVal">10</span>pt</span>
+        <input type="range" id="fontSlider" min="8" max="16" value="10" step="1" title="Adjust tape font size" style="width: 55px; height: 3px; cursor: pointer; accent-color: var(--accent-blue);" />
+      </div>
+      <div class="statusbar-group">
+        <span>TAX RATE: <span id="currentTaxStatus" style="color:var(--accent-tax);">18%</span></span>
+        <span>GRAND TOTAL: <span class="grand-total-tag" id="grandTotalDisplay">0.00</span></span>
+      </div>
+    </div>
+    <div id="notepadStatusWrap" style="display: none; width: 100%; justify-content: space-between; align-items: center;">
+      <div class="statusbar-group">
+        <span id="npLines">Lines: 0</span><span style="color:#cbd5e1;">|</span>
+        <span id="npWords">Words: 0</span><span style="color:#cbd5e1;">|</span>
+        <span id="npChars">Characters: 0</span>
+      </div>
+      <div class="statusbar-group">
+        <span style="color:var(--accent-blue); font-weight:700;">📝 Notepad Active</span>
+      </div>
+    </div>
+  </footer>
+
+  <div id="toast">Message</div>
+<script>
+    const defaultInitialText = "+   3,12,184.00   Base cost\n+     21,346.00   Shipping\n---------------\n=   3,33,530.00   Subtotal\n+   ";
+    const sheetsData = {
+      1: { text: defaultInitialText, taxRate: 18, undoStack: [], redoStack: [] },
+      2: { text: "+   ", taxRate: 18, undoStack: [], redoStack: [] },
+      3: { text: "+   ", taxRate: 18, undoStack: [], redoStack: [] },
+      4: { text: "+   ", taxRate: 18, undoStack: [], redoStack: [] }
+    };
+
+    let activeTab = 1;
+    let notepadText = "Welcome to your dedicated notepad.\nSpell check is active.\nUse '✨ AI Clean Up' to instantly proofread rough notes.";
+
+    const fontSlider = document.getElementById('fontSlider');
+    const fontSizeVal = document.getElementById('fontSizeVal');
+    const tapeContainer = document.getElementById('tapeContainer');
+    const tapeGutter = document.getElementById('tapeGutter');
+    const tapeEditor = document.getElementById('tapeEditor');
+    const notepadContainer = document.getElementById('notepadContainer');
+    const notepadEditor = document.getElementById('notepadEditor');
+    const rentContainer = document.getElementById('rentContainer');
+    const calcToolbar = document.getElementById('calcToolbar');
+    const numpadPanel = document.getElementById('numpadPanel');
+    const taxRateSelect = document.getElementById('taxRateSelect');
+    const currentTaxStatus = document.getElementById('currentTaxStatus');
+    const grandTotalDisplay = document.getElementById('grandTotalDisplay');
+    const lineCountLabel = document.getElementById('lineCountLabel');
+    const calcStatusWrap = document.getElementById('calcStatusWrap');
+    const notepadStatusWrap = document.getElementById('notepadStatusWrap');
+    const toastEl = document.getElementById('toast');
+
+    const numFormatter = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtOutDate = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+
+    let currentRentStart = new Date();
+    let currentRentEnd = new Date(currentRentStart.getFullYear(), currentRentStart.getMonth() + 1, 0);
+
+    function showToast(msg) {
+      toastEl.textContent = msg; toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 1500);
+    }
+
+    function getCurrentSheet() { return sheetsData[activeTab]; }
+
+    function getCursorCoords() {
+      const pos = tapeEditor.selectionStart;
+      const text = tapeEditor.value.replace(/\r/g, '');
+      const lines = text.substring(0, pos).split('\n');
+      return { lineIdx: lines.length - 1, colIdx: lines[lines.length - 1].length };
+    }
+
+    function setCursorCoords(lineIdx, colIdx) {
+      const lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+      let pos = 0;
+      const maxLine = Math.min(lineIdx, lines.length - 1);
+      for (let i = 0; i < maxLine; i++) pos += lines[i].length + 1;
+      pos += Math.min(colIdx, lines[maxLine] ? lines[maxLine].length : 0);
+      tapeEditor.setSelectionRange(pos, pos);
+    }
+
+    function handleSmartClickSnap() {
+      if (tapeEditor.selectionStart !== tapeEditor.selectionEnd) return;
+      const lineInfo = getCurrentLineInfo();
+      const cursorInLine = tapeEditor.selectionStart - lineInfo.start;
+      if (lineInfo.text.trim().startsWith('---') || lineInfo.text.trim().startsWith('===')) return;
+      const digitMatch = lineInfo.text.match(/\d/);
+      
+      if (digitMatch) {
+        const opMatch = lineInfo.text.match(/^[+\-*/=]|^t[\+\-]/i);
+        const opEndCol = opMatch ? opMatch[0].length : 1;
+        if (cursorInLine >= opEndCol && cursorInLine < digitMatch.index) {
+          tapeEditor.setSelectionRange(lineInfo.start + digitMatch.index, lineInfo.start + digitMatch.index);
+        }
+      } else {
+        const promptMatch = lineInfo.text.match(/^[+\-*/\s]*/);
+        if (promptMatch && cursorInLine < lineInfo.text.length) {
+          tapeEditor.setSelectionRange(lineInfo.start + lineInfo.text.length, lineInfo.start + lineInfo.text.length);
+        }
+      }
+    }
+
+    tapeEditor.addEventListener('mouseup', () => setTimeout(handleSmartClickSnap, 10));
+
+    function pushSnapshot() {
+      if (activeTab >= 5) return;
+      const sheet = getCurrentSheet(), text = tapeEditor.value.replace(/\r/g, '');
+      const { lineIdx, colIdx } = getCursorCoords();
+      if (sheet.undoStack.length > 0 && sheet.undoStack[sheet.undoStack.length - 1].text === text) return;
+      sheet.undoStack.push({ text, lineIdx, colIdx });
+      if (sheet.undoStack.length > 80) sheet.undoStack.shift();
+      sheet.redoStack = [];
+    }
+
+    function triggerUndo() {
+      if (activeTab >= 5) return;
+      const sheet = getCurrentSheet();
+      if (sheet.undoStack.length <= 1) return showToast('Nothing to undo');
+      sheet.redoStack.push(sheet.undoStack.pop());
+      const target = sheet.undoStack[sheet.undoStack.length - 1];
+      tapeEditor.value = target.text;
+      setCursorCoords(target.lineIdx, target.colIdx); evaluateDocument(); showToast('Undone');
+    }
+
+    function triggerRedo() {
+      if (activeTab >= 5) return;
+      const sheet = getCurrentSheet();
+      if (!sheet.redoStack.length) return showToast('Nothing to redo');
+      const target = sheet.redoStack.pop();
+      sheet.undoStack.push(target);
+      tapeEditor.value = target.text;
+      setCursorCoords(target.lineIdx, target.colIdx); evaluateDocument(); showToast('Redone');
+    }
+
+    function getCurrentLineInfo() {
+      const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, '');
+      const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+      let lineEnd = val.indexOf('\n', pos);
+      if (lineEnd === -1) lineEnd = val.length;
+      return { start: lineStart, end: lineEnd, text: val.substring(lineStart, lineEnd), pos: pos };
+    }
+
+    function formatLineString(lineStr) {
+      const trimmed = lineStr.trim();
+      if (!trimmed || trimmed.startsWith('---') || trimmed.startsWith('===') || trimmed.startsWith('=') || trimmed.match(/^t[\+\-]/i)) return lineStr;
+      let op = '+', rest = trimmed;
+      if (['+', '-', '*', '/'].includes(trimmed.charAt(0))) { op = trimmed.charAt(0); rest = trimmed.substring(1).trim(); }
+      const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
+      if (match) {
+        const num = parseFloat(match[1].replace(/,/g, '')) || 0;
+        const note = match[2].trim();
+        return `${op.padEnd(2, ' ')}  ${numFormatter.format(num).padStart(11, ' ')}${note ? `   ${note}` : ''}`;
+      }
+      return lineStr;
+    }
+
+    function formatCurrentLineIfEdited() {
+      const lineInfo = getCurrentLineInfo(), trimmed = lineInfo.text.trim();
+      if (/\d/.test(trimmed) && !trimmed.startsWith('=') && !trimmed.startsWith('---') && !trimmed.match(/^t[\+\-]/i)) {
+        const formatted = formatLineString(lineInfo.text);
+        if (formatted !== lineInfo.text) {
+          const { lineIdx, colIdx } = getCursorCoords(), val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start) + formatted + val.substring(lineInfo.end);
+          setCursorCoords(lineIdx, colIdx); return true;
+        }
+      }
+      return false;
+    }
+
+    function hasSubtotalBelow(startLineIdx) {
+      const lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+      for (let i = startLineIdx + 1; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (t === '') return false;
+        if (t.startsWith('=')) return true;
+      }
+      return false;
+    }
+
+    function evaluateDocument() {
+      if (activeTab >= 5) return;
+      const lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+      const { lineIdx: savedLineIdx, colIdx: savedColIdx } = getCursorCoords();
+      const defaultTaxRate = getCurrentSheet().taxRate || 18;
+
+      let newLines = [], subtotalNeedsUpdate = false, lineBlockMap = [], blockSums = [], running = 0;
+
+      lines.forEach((line) => {
+        let trimmed = line.trim();
+        if (trimmed === '') {
+          blockSums.push(Math.round(running * 100) / 100); lineBlockMap.push(blockSums.length - 1);
+          running = 0; newLines.push(line); return;
+        }
+        lineBlockMap.push(blockSums.length);
+
+        if (trimmed.startsWith('---') || trimmed.startsWith('===')) { newLines.push('---------------'); return; }
+
+        if (trimmed.startsWith('=')) {
+          const total = Math.round(running * 100) / 100;
+          const noteMatch = line.match(/^=[^a-zA-Z\d]*[\d,.]*\s*(.*)$/);
+          const targetSub = `=   ${numFormatter.format(total).padStart(11, ' ')}${(noteMatch && noteMatch[1]) ? `   ${noteMatch[1].trim()}` : ''}`;
+          if (line !== targetSub) subtotalNeedsUpdate = true;
+          newLines.push(targetSub); return;
+        }
+
+        if (trimmed.match(/^t[\+\-]/i)) {
+          const sign = trimmed.charAt(1), pctMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*%/);
+          const rate = pctMatch ? parseFloat(pctMatch[1]) : defaultTaxRate;
+          const noteMatch = trimmed.match(/^t[\+\-][\d\s,.]*(?:Tax\s*\d+%|%)?\s*(.*)$/i);
+          let note = (noteMatch && noteMatch[1].trim()) ? noteMatch[1].trim() : `Tax ${rate}%`;
+
+          let taxAmt = 0;
+          if (sign === '+') {
+            taxAmt = Math.round(running * (rate / 100) * 100) / 100;
+            running = Math.round((running + taxAmt) * 100) / 100;
+          } else {
+            const base = Math.round((running / (1 + (rate / 100))) * 100) / 100;
+            taxAmt = Math.round((running - base) * 100) / 100;
+            running = base;
+          }
+
+          const targetTax = `${sign === '+' ? 't+' : 't-'}  ${numFormatter.format(taxAmt).padStart(11, ' ')}   ${note}`;
+          if (line !== targetTax) subtotalNeedsUpdate = true;
+          newLines.push(targetTax); return;
+        }
+
+        let op = '+', rest = trimmed;
+        if (['+', '-', '*', '/'].includes(trimmed.charAt(0))) { op = trimmed.charAt(0); rest = trimmed.substring(1).trim(); }
+        const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
+        
+        if (match) {
+          const num = parseFloat(match[1].replace(/,/g, '')) || 0;
+          if (op === '+') running += num;
+          else if (op === '-') running -= num;
+          else if (op === '*') running *= num;
+          else if (op === '/') {
+            if (num === 0) { showToast('Error: Division by zero'); running = 0; line = `${op.padEnd(2, ' ')}  ${'ERR'.padStart(11, ' ')}   Div/0`; }
+            else running /= num;
+          }
+          running = Math.round(running * 100) / 100;
+        }
+        newLines.push(line);
+      });
+
+      blockSums.push(Math.round(running * 100) / 100);
+
+      if (subtotalNeedsUpdate && tapeEditor.selectionStart === tapeEditor.selectionEnd) {
+        tapeEditor.value = newLines.join('\n'); setCursorCoords(savedLineIdx, savedColIdx);
+      } else if (subtotalNeedsUpdate) {
+        tapeEditor.value = newLines.join('\n');
+      }
+
+      const activeBlockIdx = lineBlockMap[getCursorCoords().lineIdx] ?? (blockSums.length - 1);
+      grandTotalDisplay.textContent = numFormatter.format(blockSums[activeBlockIdx] ?? Math.round(running * 100) / 100);
+      
+      let gutterText = ''; for (let i = 1; i <= Math.max(1, lines.length); i++) gutterText += `${i}\n`;
+      tapeGutter.innerText = gutterText; lineCountLabel.textContent = `${lines.length} line${lines.length === 1 ? '' : 's'}`;
+      getCurrentSheet().text = tapeEditor.value.replace(/\r/g, ''); saveState();
+    }
+
+    tapeEditor.addEventListener('scroll', () => { tapeGutter.scrollTop = tapeEditor.scrollTop; });
+    tapeEditor.addEventListener('input', evaluateDocument);
+    tapeEditor.addEventListener('keyup', (e) => { if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) evaluateDocument(); });
+
+    tapeEditor.addEventListener('keydown', (e) => {
+      const hasActiveSelection = tapeEditor.selectionStart !== tapeEditor.selectionEnd;
+      if (hasActiveSelection && (e.key === 'Backspace' || e.key === 'Delete')) { pushSnapshot(); return; }
+
+      const lineInfo = getCurrentLineInfo();
+      const cursorInLine = tapeEditor.selectionStart - lineInfo.start;
+
+      if (e.key === 'F8') { e.preventDefault(); insertTaxLine(true); return; }
+      if (e.key === 'F9') { e.preventDefault(); insertTaxLine(false); return; }
+
+      if (e.key === 'Insert') {
+        e.preventDefault(); pushSnapshot();
+        const { lineIdx } = getCursorCoords(), lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+        lines.splice(lineIdx + 1, 0, '+   '); tapeEditor.value = lines.join('\n');
+        setCursorCoords(lineIdx + 1, 4); evaluateDocument(); pushSnapshot(); showToast('Line inserted'); return;
+      }
+
+      if (e.key === 'ArrowUp' && !hasActiveSelection) {
+        const { lineIdx, colIdx } = getCursorCoords();
+        if (formatCurrentLineIfEdited()) { e.preventDefault(); setCursorCoords(Math.max(0, lineIdx - 1), colIdx); evaluateDocument(); return; }
+      }
+
+      if (e.key === 'ArrowDown' && !hasActiveSelection) {
+        const { lineIdx, colIdx } = getCursorCoords();
+        if (formatCurrentLineIfEdited()) {
+          e.preventDefault(); const lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+          setCursorCoords(Math.min(lines.length - 1, lineIdx + 1), colIdx); evaluateDocument(); return;
+        }
+      }
+
+      if (['+', '-', '*', '/'].includes(e.key) && !hasActiveSelection) {
+        if (!/\d/.test(lineInfo.text)) {
+          e.preventDefault(); pushSnapshot();
+          const newLineText = `${e.key}   ${lineInfo.text.replace(/^[+\-*/\s]*/, '')}`;
+          const val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start) + newLineText + val.substring(lineInfo.end);
+          setCursorCoords(getCursorCoords().lineIdx, 4); evaluateDocument(); pushSnapshot(); return;
+        }
+        if (cursorInLine <= 4) {
+          e.preventDefault(); pushSnapshot();
+          let lineText = lineInfo.text;
+          if (['+', '-', '*', '/'].includes(lineText.trim().charAt(0))) lineText = lineText.substring(0, lineText.search(/[+\-*/]/)) + e.key + lineText.substring(lineText.search(/[+\-*/]/) + 1);
+          else lineText = `${e.key}   ${lineText.trim()}`;
+          const val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start) + lineText + val.substring(lineInfo.end);
+          tapeEditor.setSelectionRange(lineInfo.start + 4, lineInfo.start + 4); evaluateDocument(); pushSnapshot(); return;
+        }
+        if (cursorInLine >= lineInfo.text.trimEnd().length) {
+          e.preventDefault(); pushSnapshot();
+          const formatted = formatLineString(lineInfo.text), val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${e.key}   ` + val.substring(lineInfo.end);
+          tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
+          evaluateDocument(); pushSnapshot(); return;
+        }
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault(); pushSnapshot();
+        const { lineIdx } = getCursorCoords(), lines = tapeEditor.value.replace(/\r/g, '').split('\n');
+        let prevIdx = lineIdx - 1; while (prevIdx >= 0 && lines[prevIdx].trim() === '') prevIdx--;
+        const prevIsSubtotal = prevIdx >= 0 && lines[prevIdx].trim().startsWith('=');
+
+        if (/^[+\-*/\s]*$/.test(lineInfo.text.trim()) && prevIsSubtotal) {
+          lines[lineIdx] = ''; lines.splice(lineIdx + 1, 0, '+   ');
+          tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 1, 4);
+          evaluateDocument(); pushSnapshot(); showToast('New calculation block started'); return;
+        }
+
+        if (lineInfo.text.trim().startsWith('=')) {
+          lines.splice(lineIdx + 1, 0, '', '+   '); tapeEditor.value = lines.join('\n');
+          setCursorCoords(lineIdx + 2, 4); evaluateDocument(); pushSnapshot(); return;
+        }
+
+        formatCurrentLineIfEdited();
+
+        if (!/\d/.test(lineInfo.text) && lineIdx === 0 && !hasSubtotalBelow(lineIdx)) {
+          const val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.end) + '\n+   ' + val.substring(lineInfo.end);
+          tapeEditor.setSelectionRange(lineInfo.end + 5, lineInfo.end + 5); evaluateDocument(); pushSnapshot(); return;
+        }
+
+        if (hasSubtotalBelow(lineIdx)) {
+          const nextIdx = lineIdx + 1;
+          if (nextIdx < lines.length && lines[nextIdx].trim().startsWith('---')) {
+            lines.splice(nextIdx, 0, '+   '); tapeEditor.value = lines.join('\n'); setCursorCoords(nextIdx, 4);
+          } else setCursorCoords(Math.min(lines.length - 1, nextIdx), 4);
+          evaluateDocument(); pushSnapshot(); return;
+        }
+        insertSubtotal(); return;
+      }
+
+      if (e.key === '=') {
+        if (/^[+\-*/\s]*$/.test(lineInfo.text) || /\d/.test(lineInfo.text)) { e.preventDefault(); insertSubtotal(); return; }
+      }
+
+      if (e.key === 'Tab') {
+        e.preventDefault(); const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, '');
+        tapeEditor.value = val.substring(0, pos) + '   ' + val.substring(pos); tapeEditor.setSelectionRange(pos + 3, pos + 3); return;
+      }
+
+      if (e.key === 'Backspace' && !hasActiveSelection) {
+        if (/^[+\-*/\s]*$/.test(lineInfo.text) && lineInfo.start > 0) {
+          e.preventDefault(); pushSnapshot();
+          const val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start - 1) + val.substring(lineInfo.end);
+          tapeEditor.setSelectionRange(lineInfo.start - 1, lineInfo.start - 1); evaluateDocument(); pushSnapshot(); return;
+        }
+      }
+    });
+
+    function insertSubtotal() {
+      const lines = tapeEditor.value.replace(/\r/g, '').split('\n'), { lineIdx } = getCursorCoords();
+      let prevIdx = lineIdx - 1; while (prevIdx >= 0 && lines[prevIdx].trim() === '') prevIdx--;
+      if (/^[+\-*/\s]*$/.test(lines[lineIdx].trim()) && prevIdx >= 0 && lines[prevIdx].trim().startsWith('=')) return;
+      
+      pushSnapshot();
+      if (/\d/.test(lines[lineIdx]) && !lines[lineIdx].trim().startsWith('=')) lines[lineIdx] = formatLineString(lines[lineIdx]);
+
+      if (lines[lineIdx].trim().startsWith('=')) {
+        lines.splice(lineIdx + 1, 0, '', '+   '); tapeEditor.value = lines.join('\n');
+        setCursorCoords(lineIdx + 2, 4); evaluateDocument(); pushSnapshot(); return;
+      }
+      lines.splice(lineIdx + 1, 0, '---------------', '=   0.00', '+   ');
+      tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 3, 4); evaluateDocument(); pushSnapshot();
+    }
+
+    function insertTaxLine(isAddition) {
+      pushSnapshot();
+      const lines = tapeEditor.value.replace(/\r/g, '').split('\n'), { lineIdx } = getCursorCoords();
+      const rate = Number(taxRateSelect.value), trimmed = lines[lineIdx].trim(), taxLine = `${isAddition ? 't+' : 't-'} ${rate}%`;
+
+      if (/\d/.test(lines[lineIdx]) && !trimmed.startsWith('=') && !trimmed.match(/^t[\+\-]/i)) {
+        lines[lineIdx] = formatLineString(lines[lineIdx]);
+        if (hasSubtotalBelow(lineIdx)) { lines.splice(lineIdx + 1, 0, taxLine); tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 1, 4); }
+        else { lines.splice(lineIdx + 1, 0, taxLine, '---------------', '=   0.00', '+   '); tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 4, 4); }
+      } else if (/^[+\-*/\s]*$/.test(trimmed)) {
+        lines[lineIdx] = taxLine;
+        if (hasSubtotalBelow(lineIdx)) { tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 1, 4); }
+        else { lines.splice(lineIdx + 1, 0, '---------------', '=   0.00', '+   '); tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 3, 4); }
+      } else {
+        lines.splice(lineIdx + 1, 0, taxLine, '---------------', '=   0.00', '+   '); tapeEditor.value = lines.join('\n'); setCursorCoords(lineIdx + 4, 4);
+      }
+      evaluateDocument(); pushSnapshot(); showToast(`${isAddition ? 'TAX +' : 'TAX -'} (${rate}%) applied`);
+    }
+
+    document.getElementById('btnAlignTape').addEventListener('click', () => {
+      pushSnapshot();
+      const { lineIdx, colIdx } = getCursorCoords();
+      tapeEditor.value = tapeEditor.value.replace(/\r/g, '').split('\n').map(l => formatLineString(l)).join('\n');
+      setCursorCoords(lineIdx, colIdx); evaluateDocument(); pushSnapshot(); showToast('Calculations aligned');
+    });
+
+    tapeEditor.addEventListener('paste', (e) => {
+      const pasteText = (e.clipboardData || window.clipboardData).getData('text');
+      if (!pasteText) return;
+      e.preventDefault(); pushSnapshot();
+
+      const lines = pasteText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      let cleanLines = [];
+      
+      lines.forEach(rawLine => {
+        let line = rawLine.replace(/₹|\$|€|£/g, '').trim();
+        if (line.startsWith('---') || line === '═' || line === '=') { cleanLines.push('---------------'); return; }
+        let op = '+'; if (['+', '-', '*', '/', '='].includes(line.charAt(0))) { op = line.charAt(0); line = line.substring(1).trim(); }
+        const matchNum = line.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
+        if (matchNum) {
+          const num = parseFloat(matchNum[1].replace(/,/g, '')) || 0, note = matchNum[2].trim();
+          cleanLines.push(`${op.padEnd(2, ' ')}  ${numFormatter.format(num).padStart(11, ' ')}${note ? `   ${note}` : ''}`);
+        } else cleanLines.push(rawLine);
+      });
+
+      if (cleanLines.length > 0) cleanLines.push('+   ');
+      const start = tapeEditor.selectionStart, end = tapeEditor.selectionEnd, val = tapeEditor.value.replace(/\r/g, ''), inserted = cleanLines.join('\n');
+      tapeEditor.value = val.substring(0, start) + inserted + val.substring(end);
+      tapeEditor.setSelectionRange(start + inserted.length, start + inserted.length);
+      evaluateDocument(); pushSnapshot(); showToast(`Pasted ${lines.length} item(s)`);
+    });
+
+    function switchTab(tabIndex) {
+      tabIndex = parseInt(tabIndex, 10);
+      if (tabIndex < 1 || tabIndex > 6) return;
+      if (activeTab >= 1 && activeTab <= 4) sheetsData[activeTab].text = tapeEditor.value.replace(/\r/g, '');
+      activeTab = tabIndex;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', parseInt(btn.dataset.tab, 10) === activeTab));
+
+      if (activeTab === 5) {
+        tapeContainer.style.display = 'none'; calcToolbar.style.display = 'none'; numpadPanel.classList.add('hidden'); rentContainer.style.display = 'none';
+        notepadContainer.style.display = 'flex'; calcStatusWrap.style.display = 'none'; notepadStatusWrap.style.display = 'flex';
+        updateNotepadStats(); notepadEditor.focus();
+      } else if (activeTab === 6) {
+        tapeContainer.style.display = 'none'; calcToolbar.style.display = 'none'; numpadPanel.classList.add('hidden'); notepadContainer.style.display = 'none';
+        rentContainer.style.display = 'flex'; calcStatusWrap.style.display = 'none'; notepadStatusWrap.style.display = 'none';
+      } else {
+        notepadContainer.style.display = 'none'; rentContainer.style.display = 'none'; tapeContainer.style.display = 'flex'; calcToolbar.style.display = 'grid';
+        numpadPanel.classList.remove('hidden'); notepadStatusWrap.style.display = 'none'; calcStatusWrap.style.display = 'flex';
+        const sheet = sheetsData[activeTab];
+        tapeEditor.value = sheet.text || '+   '; taxRateSelect.value = sheet.taxRate || 18; currentTaxStatus.textContent = `${sheet.taxRate || 18}%`;
+        if (!sheet.undoStack.length) sheet.undoStack.push({ text: tapeEditor.value, lineIdx: 0, colIdx: tapeEditor.value.length });
+        evaluateDocument(); tapeEditor.focus();
+      }
+      saveState();
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+    function copyTapeResults() {
+      const selText = tapeEditor.value.substring(tapeEditor.selectionStart, tapeEditor.selectionEnd);
+      navigator.clipboard.writeText(selText.length > 0 ? selText : tapeEditor.value).then(() => showToast(selText.length > 0 ? 'Selected snippet copied!' : 'All calculations copied!'));
+    }
+
+    function clearEntireScreen() {
+      pushSnapshot(); tapeEditor.value = '+   '; setCursorCoords(0, 4); evaluateDocument(); pushSnapshot(); showToast('Sheet cleared (Ctrl+Z to undo)');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey && ['1', '2', '3', '4', '5', '6'].includes(e.key)) { e.preventDefault(); switchTab(e.key); return; }
+      if (e.ctrlKey && e.shiftKey && e.key === 'Backspace') { e.preventDefault(); clearEntireScreen(); return; }
+      if (e.ctrlKey && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) { if (document.activeElement === tapeEditor) { e.preventDefault(); triggerUndo(); } return; }
+      if ((e.ctrlKey && (e.key === 'y' || e.key === 'Y')) || (e.ctrlKey && e.shiftKey && (e.key === 'z' || e.key === 'Z'))) { if (document.activeElement === tapeEditor) { e.preventDefault(); triggerRedo(); } return; }
+      if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { if (tapeEditor.selectionStart === tapeEditor.selectionEnd && document.activeElement === tapeEditor) { e.preventDefault(); copyTapeResults(); } }
+    });
+
+    document.getElementById('btnNewTape').addEventListener('click', clearEntireScreen);
+    document.getElementById('btnUndo').addEventListener('click', triggerUndo);
+    document.getElementById('btnRedo').addEventListener('click', triggerRedo);
+    document.getElementById('btnCopyTape').addEventListener('click', copyTapeResults);
+    document.getElementById('btnSubtotalBar').addEventListener('click', insertSubtotal);
+    document.getElementById('btnTabNote').addEventListener('click', () => { tapeEditor.focus(); const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, pos) + '   ' + val.substring(pos); tapeEditor.setSelectionRange(pos + 3, pos + 3); });
+    document.getElementById('btnToggleNumpad').addEventListener('click', () => numpadPanel.classList.toggle('hidden'));
+    document.getElementById('taxRateSelect').addEventListener('change', (e) => { pushSnapshot(); sheetsData[activeTab].taxRate = Number(e.target.value); currentTaxStatus.textContent = `${sheetsData[activeTab].taxRate}%`; evaluateDocument(); pushSnapshot(); showToast(`Tax rate set to ${sheetsData[activeTab].taxRate}%`); });
+
+    document.querySelectorAll('.pad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (activeTab >= 5) return;
+        const key = btn.dataset.key; if (!key) return;
+        tapeEditor.focus(); const start = tapeEditor.selectionStart, end = tapeEditor.selectionEnd, hasSelection = start !== end;
+
+        if (key === 'AC') clearEntireScreen();
+        else if (key === 'CE') { const lineInfo = getCurrentLineInfo(), val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, lineInfo.start) + '+   ' + val.substring(lineInfo.end); tapeEditor.setSelectionRange(lineInfo.start + 4, lineInfo.start + 4); evaluateDocument(); }
+        else if (key === 'TAX+') insertTaxLine(true);
+        else if (key === 'TAX-') insertTaxLine(false);
+        else if (key === '=') insertSubtotal();
+        else if (key === '⌫') {
+          if (hasSelection) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + val.substring(end); tapeEditor.setSelectionRange(start, start); evaluateDocument(); }
+          else if (start > 0) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start - 1) + val.substring(start); tapeEditor.setSelectionRange(start - 1, start - 1); evaluateDocument(); }
+        } else if (['+', '-', '*', '/'].includes(key)) {
+          if (hasSelection) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + val.substring(end); tapeEditor.setSelectionRange(start, start); }
+          const lineInfo = getCurrentLineInfo();
+          if (!/\d/.test(lineInfo.text)) {
+            const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, lineInfo.start) + `${key}   ${lineInfo.text.replace(/^[+\-*/\s]*/, '')}` + val.substring(lineInfo.end); setCursorCoords(getCursorCoords().lineIdx, 4);
+          } else {
+            const val = tapeEditor.value.replace(/\r/g, ''), formatted = formatLineString(lineInfo.text); tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${key}   ` + val.substring(lineInfo.end); tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
+          }
+          evaluateDocument();
+        } else {
+          if (hasSelection) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + key + val.substring(end); tapeEditor.setSelectionRange(start + key.length, start + key.length); }
+          else { const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, pos) + key + val.substring(pos); tapeEditor.setSelectionRange(pos + key.length, pos + key.length); }
+          evaluateDocument();
+        }
+      });
+    });
+
+    /* -------------------------------------------------------------
+       NOTEPAD LOGIC (Tab 5) - Includes Gemini AI Rewrite
+       ------------------------------------------------------------- */
+    function updateNotepadStats() {
+      const text = notepadEditor.value, lines = text ? text.split(/\r\n|\r|\n/).length : 0, words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      npLines.textContent = `Lines: ${lines}`; npWords.textContent = `Words: ${words}`; npChars.textContent = `Characters: ${text.length}`;
+    }
+    notepadEditor.value = notepadText;
+    notepadEditor.addEventListener('input', () => { notepadText = notepadEditor.value; updateNotepadStats(); saveState(); });
+    function transformNotepadText(transformFn) {
+      const start = notepadEditor.selectionStart, end = notepadEditor.selectionEnd, fullText = notepadEditor.value;
+      if (start !== end) notepadEditor.setRangeText(transformFn(fullText.substring(start, end)), start, end, 'select');
+      else notepadEditor.value = transformFn(fullText);
+      notepadText = notepadEditor.value; updateNotepadStats(); saveState();
+    }
+    document.getElementById('btnProperCase').addEventListener('click', () => transformNotepadText(str => str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())));
+    document.getElementById('btnSentenceCase').addEventListener('click', () => transformNotepadText(str => str.toLowerCase().replace(/(^\s*\w|[.!?]\s*\w)/g, c => c.toUpperCase())));
+    document.getElementById('btnUpperCase').addEventListener('click', () => transformNotepadText(str => str.toUpperCase()));
+    document.getElementById('btnLowerCase').addEventListener('click', () => transformNotepadText(str => str.toLowerCase()));
+    document.getElementById('btnCopyNote').addEventListener('click', () => navigator.clipboard.writeText(notepadEditor.value).then(() => showToast('Notepad copied!')));
+    document.getElementById('btnClearNote').addEventListener('click', () => { notepadEditor.value = ''; notepadText = ''; updateNotepadStats(); saveState(); showToast('Notepad cleared'); });
+
+ 
+
+    /* -------------------------------------------------------------
+       RENT CALCULATOR LOGIC (Tab 6) - Smart Date Shorthand
+       ------------------------------------------------------------- */
+    function parseRentDate(val, isEnd) {
+      if (!val) return null;
+      let s = val.replace(/[^\d]/g, ''), d, m, y, now = new Date();
+      if (val.includes('/') || val.includes('-')) {
+        let p = val.split(/[\/\-]/);
+        if (p.length >= 2) { d = parseInt(p[0]); m = parseInt(p[1]); y = p.length === 3 ? parseInt(p[2]) : now.getFullYear(); if (y < 100) y += 2000; }
+        else return null;
+      } else if (s.length === 1 || s.length === 2) {
+        d = parseInt(s);
+        if (isEnd && currentRentStart) {
+          let rd = currentRentStart.getDate(), rm = currentRentStart.getMonth(), ry = currentRentStart.getFullYear();
+          if (d <= rd) { rm++; if (rm > 11) { rm = 0; ry++; } }
+          m = rm + 1; y = ry;
+        } else { m = now.getMonth() + 1; y = now.getFullYear(); }
+      } else if (s.length === 3 || s.length === 4) {
+        if (s.length === 3) s = '0' + s;
+        d = parseInt(s.substring(0, 2)); m = parseInt(s.substring(2, 4)); y = now.getFullYear();
+      } else if (s.length === 6) {
+        d = parseInt(s.substring(0, 2)); m = parseInt(s.substring(2, 4)); y = parseInt(s.substring(4, 6)) + 2000;
+      } else if (s.length === 8) {
+        d = parseInt(s.substring(0, 2)); m = parseInt(s.substring(2, 4)); y = parseInt(s.substring(4, 8));
+      } else return null;
+
+      if (isNaN(d) || isNaN(m) || isNaN(y) || m < 1 || m > 12 || d < 1 || d > new Date(y, m, 0).getDate()) return null;
+      return new Date(y, m - 1, d);
+    }
+
+    function handleRentDateBlur(e, isEnd) {
+      const el = e.target, parsed = parseRentDate(el.value, isEnd);
+      if (parsed) {
+        el.value = fmtOutDate(parsed); el.style.borderColor = "var(--border-color)";
+        if (isEnd) currentRentEnd = parsed; else currentRentStart = parsed;
+        calculateRent();
+      } else {
+        el.style.borderColor = "red"; showToast("Invalid date format");
+      }
+    }
+
+    ['rentStart', 'rentEnd'].forEach(id => {
+      document.getElementById(id).addEventListener('blur', (e) => handleRentDateBlur(e, id === 'rentEnd'));
+      document.getElementById(id).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); document.getElementById(id === 'rentStart' ? 'rentEnd' : 'rentRate').focus(); }
+      });
+    });
+
+    function initRentCalculator() {
+      document.getElementById('rentStart').value = fmtOutDate(currentRentStart);
+      document.getElementById('rentEnd').value = fmtOutDate(currentRentEnd);
+      calculateRent();
+    }
+
+    function calculateRent() {
+      const rateInput = parseFloat(document.getElementById('rentRate').value) || 0;
+      const includeEnd = document.getElementById('rentInclusive').checked;
+      const outArea = document.getElementById('rentOutput');
+      const breakdownArea = document.getElementById('rentBreakdown');
+
+      if (!currentRentStart || !currentRentEnd) { outArea.value = ''; breakdownArea.textContent = ''; return; }
+
+      let calcEndDate = new Date(currentRentEnd);
+      if (includeEnd) calcEndDate.setDate(calcEndDate.getDate() + 1);
+
+      if (calcEndDate <= currentRentStart) { outArea.value = "Error: End date must be after start date."; breakdownArea.textContent = ''; return; }
+
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const totalDays = Math.round((calcEndDate - currentRentStart) / msPerDay);
+
+      let months = 0, tempDate = new Date(currentRentStart);
+      while (true) {
+        tempDate.setMonth(tempDate.getMonth() + 1);
+        if (tempDate <= calcEndDate) months++;
+        else { tempDate.setMonth(tempDate.getMonth() - 1); break; }
+      }
+
+      const remainingDays = Math.round((calcEndDate - tempDate) / msPerDay);
+      const dailyRate = rateInput / 30;
+      const totalRent = Math.round((months * rateInput) + (remainingDays * dailyRate));
+
+      outArea.value = `${fmtOutDate(currentRentStart)} to ${fmtOutDate(currentRentEnd)}, Duration: ${totalDays} days, Monthly Rate: ${rateInput}, Total Rent: ${totalRent}`;
+      breakdownArea.textContent = `Calculation: ${months} full month(s) + ${remainingDays} pro-rated day(s) (based on commercial 30-day month).`;
+    }
+
+    document.getElementById('rentRate').addEventListener('input', calculateRent);
+    document.getElementById('rentInclusive').addEventListener('change', calculateRent);
+    document.getElementById('btnCalcRent').addEventListener('click', calculateRent);
+    document.getElementById('btnCopyRent').addEventListener('click', () => {
+      const txt = document.getElementById('rentOutput').value;
+      if (txt && !txt.startsWith("Error")) navigator.clipboard.writeText(txt).then(() => showToast('Rent text copied!'));
+    });
+
+    function setTapeFontSize(ptSize) {
+      ptSize = parseInt(ptSize, 10) || 10;
+      document.documentElement.style.setProperty('--tape-font-size', Math.round(ptSize * 1.333) + 'px');
+      document.documentElement.style.setProperty('--line-height', Math.round(Math.round(ptSize * 1.333) * 1.7) + 'px');
+      if (fontSizeVal) fontSizeVal.textContent = ptSize;
+      if (fontSlider) fontSlider.value = ptSize;
+      localStorage.setItem('calc_tape_font_pt', ptSize);
+    }
+    if (fontSlider) fontSlider.addEventListener('input', (e) => setTapeFontSize(e.target.value));
+
+    function saveState() {
+      localStorage.setItem('calctape_final_session', JSON.stringify({
+        activeTab, notepadText,
+        sheets: {
+          1: { text: sheetsData[1].text, taxRate: sheetsData[1].taxRate },
+          2: { text: sheetsData[2].text, taxRate: sheetsData[2].taxRate },
+          3: { text: sheetsData[3].text, taxRate: sheetsData[3].taxRate },
+          4: { text: sheetsData[4].text, taxRate: sheetsData[4].taxRate }
+        }
+      }));
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem('calctape_final_session');
+        if (!saved) return;
+        const parsed = JSON.parse(saved);
+        if (parsed.sheets) {
+          for (let i = 1; i <= 4; i++) {
+            if (parsed.sheets[i] && parsed.sheets[i].text !== undefined) {
+              sheetsData[i].text = parsed.sheets[i].text;
+              sheetsData[i].taxRate = parsed.sheets[i].taxRate || 18;
+            }
+          }
+        }
+        if (parsed.notepadText !== undefined) { notepadText = parsed.notepadText; notepadEditor.value = notepadText; }
+        if (parsed.activeTab) activeTab = parsed.activeTab;
+      } catch (e) { console.error('Failed to restore session:', e); }
+    }
+
+    loadState();
+    setTapeFontSize(localStorage.getItem('calc_tape_font_pt') || 10);
+    initRentCalculator();
+    switchTab(activeTab || 1);
+
+    window.addEventListener('resize', () => {
+      localStorage.setItem('calc_win_width', window.outerWidth); localStorage.setItem('calc_win_height', window.outerHeight);
+    });
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedW = parseInt(localStorage.getItem('calc_win_width'), 10), savedH = parseInt(localStorage.getItem('calc_win_height'), 10);
+      if (savedW && savedH) window.resizeTo(savedW, savedH);
+    });
+  </script>
+</body>
+</html>
