@@ -1,4 +1,4 @@
-<!-- 30092605 -->
+<!-- 30092606 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,9 +212,19 @@
 
   <div id="toast">Message</div>
 <script>
-    // Auto-read the version from the Line 1 HTML comment and update the title
+    // Auto-read the version from the Line 1 HTML comment
     const versionNode = Array.from(document.childNodes).find(n => n.nodeType === 8);
-    if (versionNode) document.title = `CalcTape - v${versionNode.nodeValue.trim()}`;
+    if (versionNode) {
+      const vText = `v${versionNode.nodeValue.trim()}`;
+      // Update standard browser title
+      document.title = `CalcTape - ${vText}`;
+      
+      // Inject version into the top right of the UI for App Mode visibility
+      const vSpan = document.createElement('span');
+      vSpan.textContent = vText;
+      vSpan.style.cssText = "margin-left: auto; font-size: 11px; font-weight: 700; color: #94a3b8; padding: 0 10px; user-select: text;";
+      document.querySelector('.tab-bar').appendChild(vSpan);
+    }
 
     const defaultInitialText = "+   3,12,184.00   Base cost\n+     21,346.00   Shipping\n---------------\n=   3,33,530.00   Subtotal\n+   ";
     const sheetsData = {
