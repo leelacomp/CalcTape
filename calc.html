@@ -1,4 +1,4 @@
-<!-- 26092607 -->
+<!-- 30092605 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,6 +212,10 @@
 
   <div id="toast">Message</div>
 <script>
+    // Auto-read the version from the Line 1 HTML comment and update the title
+    const versionNode = Array.from(document.childNodes).find(n => n.nodeType === 8);
+    if (versionNode) document.title = `CalcTape - v${versionNode.nodeValue.trim()}`;
+
     const defaultInitialText = "+   3,12,184.00   Base cost\n+     21,346.00   Shipping\n---------------\n=   3,33,530.00   Subtotal\n+   ";
     const sheetsData = {
       1: { text: defaultInitialText, taxRate: 18, undoStack: [], redoStack: [] },
@@ -491,6 +495,13 @@
           tapeEditor.value = val.substring(0, lineInfo.start) + newLineText + val.substring(lineInfo.end);
           setCursorCoords(getCursorCoords().lineIdx, 4); evaluateDocument(); pushSnapshot(); return;
         }
+        if (cursorInLine >= lineInfo.text.trimEnd().length) {
+          e.preventDefault(); pushSnapshot();
+          const formatted = formatLineString(lineInfo.text), val = tapeEditor.value.replace(/\r/g, '');
+          tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${e.key}   ` + val.substring(lineInfo.end);
+          tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
+          evaluateDocument(); pushSnapshot(); return;
+        }
         if (cursorInLine <= 4) {
           e.preventDefault(); pushSnapshot();
           let lineText = lineInfo.text;
@@ -499,13 +510,6 @@
           const val = tapeEditor.value.replace(/\r/g, '');
           tapeEditor.value = val.substring(0, lineInfo.start) + lineText + val.substring(lineInfo.end);
           tapeEditor.setSelectionRange(lineInfo.start + 4, lineInfo.start + 4); evaluateDocument(); pushSnapshot(); return;
-        }
-        if (cursorInLine >= lineInfo.text.trimEnd().length) {
-          e.preventDefault(); pushSnapshot();
-          const formatted = formatLineString(lineInfo.text), val = tapeEditor.value.replace(/\r/g, '');
-          tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${e.key}   ` + val.substring(lineInfo.end);
-          tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
-          evaluateDocument(); pushSnapshot(); return;
         }
       }
 
@@ -631,7 +635,7 @@
       evaluateDocument(); pushSnapshot(); showToast(`Pasted ${lines.length} item(s)`);
     });
 
-let isAppStarting = true;
+    let isAppStarting = true;
     function switchTab(tabIndex) {
       tabIndex = parseInt(tabIndex, 10);
       if (tabIndex < 1 || tabIndex > 6) return;
@@ -667,7 +671,13 @@ let isAppStarting = true;
 
     function copyTapeResults() {
       const selText = tapeEditor.value.substring(tapeEditor.selectionStart, tapeEditor.selectionEnd);
-      navigator.clipboard.writeText(selText.length > 0 ? selText : tapeEditor.value).then(() => showToast(selText.length > 0 ? 'Selected snippet copied!' : 'All calculations copied!'));
+      if (selText.length > 0) {
+        navigator.clipboard.writeText(selText).then(() => showToast('Selected snippet copied!'));
+      } else {
+        // Grab the grand total and remove commas for clean pasting
+        const finalResult = grandTotalDisplay.textContent.replace(/,/g, '');
+        navigator.clipboard.writeText(finalResult).then(() => showToast('Result copied: ' + finalResult));
+      }
     }
 
     function clearEntireScreen() {
@@ -691,7 +701,13 @@ let isAppStarting = true;
     document.getElementById('btnToggleNumpad').addEventListener('click', () => numpadPanel.classList.toggle('hidden'));
     document.getElementById('taxRateSelect').addEventListener('change', (e) => { pushSnapshot(); sheetsData[activeTab].taxRate = Number(e.target.value); currentTaxStatus.textContent = `${sheetsData[activeTab].taxRate}%`; evaluateDocument(); pushSnapshot(); showToast(`Tax rate set to ${sheetsData[activeTab].taxRate}%`); });
 
-    document.querySelectorAll('.pad-btn').forEach(btn => {
+document.querySelectorAll('.pad-btn').forEach(btn => {
+      
+      // FIX: Prevent the on-screen buttons from stealing focus and destroying text selections!
+      btn.addEventListener('mousedown', (e) => {
+        if (document.activeElement === tapeEditor) e.preventDefault();
+      });
+
       btn.addEventListener('click', () => {
         if (activeTab >= 5) return;
         const key = btn.dataset.key; if (!key) return;
