@@ -631,10 +631,17 @@
       evaluateDocument(); pushSnapshot(); showToast(`Pasted ${lines.length} item(s)`);
     });
 
+let isAppStarting = true;
     function switchTab(tabIndex) {
       tabIndex = parseInt(tabIndex, 10);
       if (tabIndex < 1 || tabIndex > 6) return;
-      if (activeTab >= 1 && activeTab <= 4) sheetsData[activeTab].text = tapeEditor.value.replace(/\r/g, '');
+      
+      // Stop the blank editor from destroying our loaded data on startup
+      if (activeTab >= 1 && activeTab <= 4 && !isAppStarting) {
+          sheetsData[activeTab].text = tapeEditor.value.replace(/\r/g, '');
+      }
+      isAppStarting = false;
+      
       activeTab = tabIndex;
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', parseInt(btn.dataset.tab, 10) === activeTab));
 
