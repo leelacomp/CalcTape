@@ -1,4 +1,4 @@
-<!-- 30092606 -->
+<!-- 01102601 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -212,14 +212,11 @@
 
   <div id="toast">Message</div>
 <script>
-    // Auto-read the version from the Line 1 HTML comment
+    // Auto-read the version from the Line 1 HTML comment and update the title
     const versionNode = Array.from(document.childNodes).find(n => n.nodeType === 8);
     if (versionNode) {
       const vText = `v${versionNode.nodeValue.trim()}`;
-      // Update standard browser title
       document.title = `CalcTape - ${vText}`;
-      
-      // Inject version into the top right of the UI for App Mode visibility
       const vSpan = document.createElement('span');
       vSpan.textContent = vText;
       vSpan.style.cssText = "margin-left: auto; font-size: 11px; font-weight: 700; color: #94a3b8; padding: 0 10px; user-select: text;";
@@ -348,8 +345,15 @@
     function formatLineString(lineStr) {
       const trimmed = lineStr.trim();
       if (!trimmed || trimmed.startsWith('---') || trimmed.startsWith('===') || trimmed.startsWith('=') || trimmed.match(/^t[\+\-]/i)) return lineStr;
-      let op = '+', rest = trimmed;
-      if (['+', '-', '*', '/'].includes(trimmed.charAt(0))) { op = trimmed.charAt(0); rest = trimmed.substring(1).trim(); }
+      
+      // NEW: Double-Sign Resolver (Snaps "+ -3500" or "+ +3500" into proper operators)
+      let sanitized = trimmed.replace(/^([+\-*/])\s*\+/, '$1 ');
+      sanitized = sanitized.replace(/^\+\s*\-/, '- ');
+      sanitized = sanitized.replace(/^\-\s*\-/, '+ ');
+      sanitized = sanitized.replace(/^\-\s*\+/, '- ');
+      
+      let op = '+', rest = sanitized;
+      if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
       const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
       if (match) {
         const num = parseFloat(match[1].replace(/,/g, '')) || 0;
@@ -389,18 +393,20 @@
       const defaultTaxRate = getCurrentSheet().taxRate || 18;
 
       let newLines = [], subtotalNeedsUpdate = false, lineBlockMap = [], blockSums = [], running = 0;
+      let applyToRunning = true, lastValue = 0; // NEW: Multiplier logic tracking variables
 
       lines.forEach((line) => {
         let trimmed = line.trim();
         if (trimmed === '') {
           blockSums.push(Math.round(running * 100) / 100); lineBlockMap.push(blockSums.length - 1);
-          running = 0; newLines.push(line); return;
+          running = 0; applyToRunning = true; newLines.push(line); return;
         }
         lineBlockMap.push(blockSums.length);
 
-        if (trimmed.startsWith('---') || trimmed.startsWith('===')) { newLines.push('---------------'); return; }
+        if (trimmed.startsWith('---') || trimmed.startsWith('===')) { applyToRunning = true; newLines.push('---------------'); return; }
 
         if (trimmed.startsWith('=')) {
+          applyToRunning = true;
           const total = Math.round(running * 100) / 100;
           const noteMatch = line.match(/^=[^a-zA-Z\d]*[\d,.]*\s*(.*)$/);
           const targetSub = `=   ${numFormatter.format(total).padStart(11, ' ')}${(noteMatch && noteMatch[1]) ? `   ${noteMatch[1].trim()}` : ''}`;
@@ -409,6 +415,7 @@
         }
 
         if (trimmed.match(/^t[\+\-]/i)) {
+          applyToRunning = true;
           const sign = trimmed.charAt(1), pctMatch = trimmed.match(/(\d+(?:\.\d+)?)\s*%/);
           const rate = pctMatch ? parseFloat(pctMatch[1]) : defaultTaxRate;
           const noteMatch = trimmed.match(/^t[\+\-][\d\s,.]*(?:Tax\s*\d+%|%)?\s*(.*)$/i);
@@ -429,20 +436,44 @@
           newLines.push(targetTax); return;
         }
 
-        let op = '+', rest = trimmed;
-        if (['+', '-', '*', '/'].includes(trimmed.charAt(0))) { op = trimmed.charAt(0); rest = trimmed.substring(1).trim(); }
+        // NEW: Double-Sign Resolver for accurate Math evaluation
+        let sanitized = trimmed.replace(/^([+\-*/])\s*\+/, '$1 ');
+        sanitized = sanitized.replace(/^\+\s*\-/, '- ');
+        sanitized = sanitized.replace(/^\-\s*\-/, '+ ');
+        sanitized = sanitized.replace(/^\-\s*\+/, '- ');
+
+        let op = '+', rest = sanitized;
+        if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
         const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
         
         if (match) {
           const num = parseFloat(match[1].replace(/,/g, '')) || 0;
-          if (op === '+') running += num;
-          else if (op === '-') running -= num;
-          else if (op === '*') running *= num;
-          else if (op === '/') {
-            if (num === 0) { showToast('Error: Division by zero'); running = 0; line = `${op.padEnd(2, ' ')}  ${'ERR'.padStart(11, ' ')}   Div/0`; }
-            else running /= num;
+          
+          // NEW: Smart Invoice Multiplier Logic
+          if (op === '+' || op === '-') {
+            const val = (op === '-') ? -num : num;
+            running += val;
+            lastValue = val;
+            applyToRunning = false;
+          } else if (op === '*' || op === '/') {
+            if (applyToRunning) {
+              if (op === '*') running *= num;
+              else {
+                if (num === 0) { showToast('Error: Division by zero'); running = 0; line = `${op.padEnd(2, ' ')}  ${'ERR'.padStart(11, ' ')}   Div/0`; }
+                else running /= num;
+              }
+            } else {
+              running -= lastValue; // Back out the previous individual line item
+              if (op === '*') lastValue *= num; // Multiply just that item
+              else {
+                if (num === 0) { showToast('Error: Division by zero'); lastValue = 0; line = `${op.padEnd(2, ' ')}  ${'ERR'.padStart(11, ' ')}   Div/0`; }
+                else lastValue /= num;
+              }
+              running += lastValue; // Add it back into the total
+            }
           }
           running = Math.round(running * 100) / 100;
+          lastValue = Math.round(lastValue * 100) / 100;
         }
         newLines.push(line);
       });
@@ -630,6 +661,13 @@
       lines.forEach(rawLine => {
         let line = rawLine.replace(/₹|\$|€|£/g, '').trim();
         if (line.startsWith('---') || line === '═' || line === '=') { cleanLines.push('---------------'); return; }
+        
+        // NEW: Double-Sign Resolver on paste
+        line = line.replace(/^([+\-*/])\s*\+/, '$1 ');
+        line = line.replace(/^\+\s*\-/, '- ');
+        line = line.replace(/^\-\s*\-/, '+ ');
+        line = line.replace(/^\-\s*\+/, '- ');
+        
         let op = '+'; if (['+', '-', '*', '/', '='].includes(line.charAt(0))) { op = line.charAt(0); line = line.substring(1).trim(); }
         const matchNum = line.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
         if (matchNum) {
@@ -650,7 +688,6 @@
       tabIndex = parseInt(tabIndex, 10);
       if (tabIndex < 1 || tabIndex > 6) return;
       
-      // Stop the blank editor from destroying our loaded data on startup
       if (activeTab >= 1 && activeTab <= 4 && !isAppStarting) {
           sheetsData[activeTab].text = tapeEditor.value.replace(/\r/g, '');
       }
@@ -684,7 +721,6 @@
       if (selText.length > 0) {
         navigator.clipboard.writeText(selText).then(() => showToast('Selected snippet copied!'));
       } else {
-        // Grab the grand total and remove commas for clean pasting
         const finalResult = grandTotalDisplay.textContent.replace(/,/g, '');
         navigator.clipboard.writeText(finalResult).then(() => showToast('Result copied: ' + finalResult));
       }
@@ -711,9 +747,7 @@
     document.getElementById('btnToggleNumpad').addEventListener('click', () => numpadPanel.classList.toggle('hidden'));
     document.getElementById('taxRateSelect').addEventListener('change', (e) => { pushSnapshot(); sheetsData[activeTab].taxRate = Number(e.target.value); currentTaxStatus.textContent = `${sheetsData[activeTab].taxRate}%`; evaluateDocument(); pushSnapshot(); showToast(`Tax rate set to ${sheetsData[activeTab].taxRate}%`); });
 
-document.querySelectorAll('.pad-btn').forEach(btn => {
-      
-      // FIX: Prevent the on-screen buttons from stealing focus and destroying text selections!
+    document.querySelectorAll('.pad-btn').forEach(btn => {
       btn.addEventListener('mousedown', (e) => {
         if (document.activeElement === tapeEditor) e.preventDefault();
       });
@@ -769,8 +803,6 @@ document.querySelectorAll('.pad-btn').forEach(btn => {
     document.getElementById('btnLowerCase').addEventListener('click', () => transformNotepadText(str => str.toLowerCase()));
     document.getElementById('btnCopyNote').addEventListener('click', () => navigator.clipboard.writeText(notepadEditor.value).then(() => showToast('Notepad copied!')));
     document.getElementById('btnClearNote').addEventListener('click', () => { notepadEditor.value = ''; notepadText = ''; updateNotepadStats(); saveState(); showToast('Notepad cleared'); });
-
- 
 
     /* -------------------------------------------------------------
        RENT CALCULATOR LOGIC (Tab 6) - Smart Date Shorthand
