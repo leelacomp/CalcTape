@@ -1,4 +1,5 @@
-<!-- 01102601 -->
+<!-- 01102605 -->
+<!-- numpad remember -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,8 +67,9 @@
     .btn-tax { background: #e6fffa; color: #047857; border-color: #a7f3d0; font-weight: 700; }
     .btn-tax:hover { background: #ccfbf1; }
     .btn-op { background: #e2e8f0; color: #0f172a; font-size: 15px; }
-    .btn-subtotal { grid-column: span 2; background: #2563eb; color: white; border-color: #1d4ed8; font-size: 14px; }
+    .btn-subtotal { background: #2563eb; color: white; border-color: #1d4ed8; font-size: 15px; }
     .btn-subtotal:hover { background: #1d4ed8; }
+    .btn-mem { background: #f8fafc; color: #334155; font-size: 12px; }
     .statusbar { background: #ffffff; border-top: 1px solid var(--border-color); padding: 4px 10px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-weight: 600; color: #334155; }
     .statusbar-group { display: flex; gap: 8px; align-items: center; }
     .grand-total-tag { font-size: 14px; color: var(--accent-blue); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -156,48 +158,68 @@
     <aside class="numpad-panel" id="numpadPanel">
       <div class="numpad-header">
         <span>NUM PAD</span>
-        <span style="font-size: 10px; color:#64748b;">F8: Tax+ | F9: Tax-</span>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span style="font-size: 10px; color:#64748b;">F8: Tax+ | F9: Tax-</span>
+          <button id="btnCloseNumpad" style="background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 16px; line-height: 1;" title="Hide Numpad">×</button>
+        </div>
       </div>
       <div class="numpad-grid">
+        <button class="pad-btn btn-mem" data-key="MC" title="Memory Clear">MC</button>
+        <button class="pad-btn btn-mem" data-key="MR" title="Memory Recall">MR</button>
+        <button class="pad-btn btn-mem" data-key="M+" title="Memory Add">M+</button>
+        <button class="pad-btn btn-mem" data-key="M-" title="Memory Subtract">M-</button>
+
         <button class="pad-btn btn-clear" data-key="AC" title="Clear sheet">AC</button>
         <button class="pad-btn" data-key="CE" title="Clear current line">CE</button>
         <button class="pad-btn btn-tax" data-key="TAX+" title="Add Tax (Shortcut: 'F8')">TAX +</button>
         <button class="pad-btn btn-tax" data-key="TAX-" title="Deduct Tax (Shortcut: 'F9')">TAX -</button>
+        
         <button class="pad-btn" data-key="7">7</button>
         <button class="pad-btn" data-key="8">8</button>
         <button class="pad-btn" data-key="9">9</button>
         <button class="pad-btn btn-op" data-key="/">÷</button>
+        
         <button class="pad-btn" data-key="4">4</button>
         <button class="pad-btn" data-key="5">5</button>
         <button class="pad-btn" data-key="6">6</button>
         <button class="pad-btn btn-op" data-key="*">×</button>
+        
         <button class="pad-btn" data-key="1">1</button>
         <button class="pad-btn" data-key="2">2</button>
         <button class="pad-btn" data-key="3">3</button>
         <button class="pad-btn btn-op" data-key="-">−</button>
+        
         <button class="pad-btn" data-key="0">0</button>
         <button class="pad-btn" data-key="00">00</button>
         <button class="pad-btn" data-key=".">.</button>
         <button class="pad-btn btn-op" data-key="+">+</button>
-        <button class="pad-btn" data-key="⌫">⌫</button>
-        <button class="pad-btn btn-subtotal" data-key="=">= Subtotal</button>
-        <button class="pad-btn" id="btnTabNote">Tab</button>
+        
+        <button class="pad-btn btn-op" data-key="%" title="Percentage">%</button>
+        <button class="pad-btn" data-key="⌫" title="Backspace">⌫</button>
+        <button class="pad-btn btn-subtotal" data-key="=" title="Insert Subtotal">=</button>
+        <button class="pad-btn" id="btnTabNote" title="Indent (Tab)">Tab</button>
       </div>
     </aside>
   </main>
 
   <footer class="statusbar">
     <div id="calcStatusWrap" style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
-      <div class="statusbar-group"><span id="lineCountLabel">0 lines</span></div>
+      <div class="statusbar-group">
+        <span id="lineCountLabel">0 lines</span>
+      </div>
+      
       <div class="statusbar-group" style="align-items: center; gap: 4px;">
         <span style="font-size: 10px; color: #64748b;">Font: <span id="fontSizeVal">10</span>pt</span>
         <input type="range" id="fontSlider" min="8" max="16" value="10" step="1" title="Adjust tape font size" style="width: 55px; height: 3px; cursor: pointer; accent-color: var(--accent-blue);" />
       </div>
+      
       <div class="statusbar-group">
         <span>TAX RATE: <span id="currentTaxStatus" style="color:var(--accent-tax);">18%</span></span>
         <span>GRAND TOTAL: <span class="grand-total-tag" id="grandTotalDisplay">0.00</span></span>
+        <span id="memoryIndicator" style="color: var(--accent-blue); font-weight: 800; display: none; margin-left: 8px;" title="Memory">[M]</span>
       </div>
     </div>
+    
     <div id="notepadStatusWrap" style="display: none; width: 100%; justify-content: space-between; align-items: center;">
       <div class="statusbar-group">
         <span id="npLines">Lines: 0</span><span style="color:#cbd5e1;">|</span>
@@ -212,7 +234,6 @@
 
   <div id="toast">Message</div>
 <script>
-    // Auto-read the version from the Line 1 HTML comment and update the title
     const versionNode = Array.from(document.childNodes).find(n => n.nodeType === 8);
     if (versionNode) {
       const vText = `v${versionNode.nodeValue.trim()}`;
@@ -231,7 +252,9 @@
       4: { text: "+   ", taxRate: 18, undoStack: [], redoStack: [] }
     };
 
-    let activeTab = 1;
+let activeTab = 1;
+    let memoryValue = 0;
+    let isNumpadHidden = false;
     let notepadText = "Welcome to your dedicated notepad.\nSpell check is active.\nUse '✨ AI Clean Up' to instantly proofread rough notes.";
 
     const fontSlider = document.getElementById('fontSlider');
@@ -250,6 +273,7 @@
     const lineCountLabel = document.getElementById('lineCountLabel');
     const calcStatusWrap = document.getElementById('calcStatusWrap');
     const notepadStatusWrap = document.getElementById('notepadStatusWrap');
+    const memoryIndicator = document.getElementById('memoryIndicator');
     const toastEl = document.getElementById('toast');
 
     const numFormatter = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -261,6 +285,15 @@
     function showToast(msg) {
       toastEl.textContent = msg; toastEl.classList.add('show');
       setTimeout(() => toastEl.classList.remove('show'), 1500);
+    }
+
+    function updateMemoryIndicator() {
+      if (memoryValue !== 0) {
+        memoryIndicator.style.display = 'inline';
+        memoryIndicator.title = `Memory: ${numFormatter.format(memoryValue)}`;
+      } else {
+        memoryIndicator.style.display = 'none';
+      }
     }
 
     function getCurrentSheet() { return sheetsData[activeTab]; }
@@ -346,7 +379,6 @@
       const trimmed = lineStr.trim();
       if (!trimmed || trimmed.startsWith('---') || trimmed.startsWith('===') || trimmed.startsWith('=') || trimmed.match(/^t[\+\-]/i)) return lineStr;
       
-      // NEW: Double-Sign Resolver (Snaps "+ -3500" or "+ +3500" into proper operators)
       let sanitized = trimmed.replace(/^([+\-*/])\s*\+/, '$1 ');
       sanitized = sanitized.replace(/^\+\s*\-/, '- ');
       sanitized = sanitized.replace(/^\-\s*\-/, '+ ');
@@ -354,11 +386,14 @@
       
       let op = '+', rest = sanitized;
       if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
-      const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
+      
+      // Preserve standard percentage marks during formatting
+      const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))\s*(%?)(.*)$/);
       if (match) {
         const num = parseFloat(match[1].replace(/,/g, '')) || 0;
-        const note = match[2].trim();
-        return `${op.padEnd(2, ' ')}  ${numFormatter.format(num).padStart(11, ' ')}${note ? `   ${note}` : ''}`;
+        const pct = match[2];
+        const note = match[3].trim();
+        return `${op.padEnd(2, ' ')}  ${(numFormatter.format(num) + pct).padStart(11 + pct.length, ' ')}${note ? `   ${note}` : ''}`;
       }
       return lineStr;
     }
@@ -393,7 +428,7 @@
       const defaultTaxRate = getCurrentSheet().taxRate || 18;
 
       let newLines = [], subtotalNeedsUpdate = false, lineBlockMap = [], blockSums = [], running = 0;
-      let applyToRunning = true, lastValue = 0; // NEW: Multiplier logic tracking variables
+      let applyToRunning = true, lastValue = 0;
 
       lines.forEach((line) => {
         let trimmed = line.trim();
@@ -436,7 +471,6 @@
           newLines.push(targetTax); return;
         }
 
-        // NEW: Double-Sign Resolver for accurate Math evaluation
         let sanitized = trimmed.replace(/^([+\-*/])\s*\+/, '$1 ');
         sanitized = sanitized.replace(/^\+\s*\-/, '- ');
         sanitized = sanitized.replace(/^\-\s*\-/, '+ ');
@@ -444,12 +478,22 @@
 
         let op = '+', rest = sanitized;
         if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
-        const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))(.*)$/);
+        
+        // Includes logic to detect percentage sign for smart math
+        const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))\s*(%?)(.*)$/);
         
         if (match) {
-          const num = parseFloat(match[1].replace(/,/g, '')) || 0;
+          let num = parseFloat(match[1].replace(/,/g, '')) || 0;
+          const isPercent = match[2] === '%';
           
-          // NEW: Smart Invoice Multiplier Logic
+          if (isPercent) {
+            if (op === '+' || op === '-') {
+                num = (running * num) / 100; 
+            } else if (op === '*' || op === '/') {
+                num = num / 100; 
+            }
+          }
+          
           if (op === '+' || op === '-') {
             const val = (op === '-') ? -num : num;
             running += val;
@@ -463,13 +507,13 @@
                 else running /= num;
               }
             } else {
-              running -= lastValue; // Back out the previous individual line item
-              if (op === '*') lastValue *= num; // Multiply just that item
+              running -= lastValue; 
+              if (op === '*') lastValue *= num; 
               else {
                 if (num === 0) { showToast('Error: Division by zero'); lastValue = 0; line = `${op.padEnd(2, ' ')}  ${'ERR'.padStart(11, ' ')}   Div/0`; }
                 else lastValue /= num;
               }
-              running += lastValue; // Add it back into the total
+              running += lastValue; 
             }
           }
           running = Math.round(running * 100) / 100;
@@ -662,7 +706,6 @@
         let line = rawLine.replace(/₹|\$|€|£/g, '').trim();
         if (line.startsWith('---') || line === '═' || line === '=') { cleanLines.push('---------------'); return; }
         
-        // NEW: Double-Sign Resolver on paste
         line = line.replace(/^([+\-*/])\s*\+/, '$1 ');
         line = line.replace(/^\+\s*\-/, '- ');
         line = line.replace(/^\-\s*\-/, '+ ');
@@ -705,7 +748,8 @@
         rentContainer.style.display = 'flex'; calcStatusWrap.style.display = 'none'; notepadStatusWrap.style.display = 'none';
       } else {
         notepadContainer.style.display = 'none'; rentContainer.style.display = 'none'; tapeContainer.style.display = 'flex'; calcToolbar.style.display = 'grid';
-        numpadPanel.classList.remove('hidden'); notepadStatusWrap.style.display = 'none'; calcStatusWrap.style.display = 'flex';
+if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classList.remove('hidden');
+        notepadStatusWrap.style.display = 'none'; calcStatusWrap.style.display = 'flex';
         const sheet = sheetsData[activeTab];
         tapeEditor.value = sheet.text || '+   '; taxRateSelect.value = sheet.taxRate || 18; currentTaxStatus.textContent = `${sheet.taxRate || 18}%`;
         if (!sheet.undoStack.length) sheet.undoStack.push({ text: tapeEditor.value, lineIdx: 0, colIdx: tapeEditor.value.length });
@@ -744,7 +788,8 @@
     document.getElementById('btnCopyTape').addEventListener('click', copyTapeResults);
     document.getElementById('btnSubtotalBar').addEventListener('click', insertSubtotal);
     document.getElementById('btnTabNote').addEventListener('click', () => { tapeEditor.focus(); const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, pos) + '   ' + val.substring(pos); tapeEditor.setSelectionRange(pos + 3, pos + 3); });
-    document.getElementById('btnToggleNumpad').addEventListener('click', () => numpadPanel.classList.toggle('hidden'));
+    document.getElementById('btnToggleNumpad').addEventListener('click', () => { isNumpadHidden = !isNumpadHidden; numpadPanel.classList.toggle('hidden', isNumpadHidden); saveState(); });
+    document.getElementById('btnCloseNumpad').addEventListener('click', () => { isNumpadHidden = true; numpadPanel.classList.add('hidden'); saveState(); });
     document.getElementById('taxRateSelect').addEventListener('change', (e) => { pushSnapshot(); sheetsData[activeTab].taxRate = Number(e.target.value); currentTaxStatus.textContent = `${sheetsData[activeTab].taxRate}%`; evaluateDocument(); pushSnapshot(); showToast(`Tax rate set to ${sheetsData[activeTab].taxRate}%`); });
 
     document.querySelectorAll('.pad-btn').forEach(btn => {
@@ -762,16 +807,51 @@
         else if (key === 'TAX+') insertTaxLine(true);
         else if (key === 'TAX-') insertTaxLine(false);
         else if (key === '=') insertSubtotal();
+        else if (key === 'MC') { memoryValue = 0; updateMemoryIndicator(); showToast('Memory Cleared'); }
+        else if (key === 'MR') {
+          if (memoryValue !== 0) {
+            const memStr = memoryValue.toString();
+            if (hasSelection) {
+              const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + memStr + val.substring(end); tapeEditor.setSelectionRange(start + memStr.length, start + memStr.length);
+            } else {
+              const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, pos) + memStr + val.substring(pos); tapeEditor.setSelectionRange(pos + memStr.length, pos + memStr.length);
+            }
+            evaluateDocument(); showToast('Memory Recalled');
+          } else { showToast('Memory is empty'); }
+        }
+        else if (key === 'M+' || key === 'M-') {
+          let valToAdd = 0;
+          const lineInfo = getCurrentLineInfo();
+          let sanitized = lineInfo.text.trim().replace(/^([+\-*/])\s*\+/, '$1 ').replace(/^\+\s*\-/, '- ').replace(/^\-\s*\-/, '+ ').replace(/^\-\s*\+/, '- ');
+          let rest = sanitized;
+          if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) rest = sanitized.substring(1).trim();
+          const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))/);
+          
+          if (match) valToAdd = parseFloat(match[1].replace(/,/g, ''));
+          else valToAdd = parseFloat(grandTotalDisplay.textContent.replace(/,/g, '')) || 0;
+          
+          if (key === 'M-') valToAdd = -valToAdd;
+          memoryValue += valToAdd;
+          updateMemoryIndicator();
+          showToast(`${key} (${numFormatter.format(valToAdd)})`);
+        }
         else if (key === '⌫') {
           if (hasSelection) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + val.substring(end); tapeEditor.setSelectionRange(start, start); evaluateDocument(); }
           else if (start > 0) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start - 1) + val.substring(start); tapeEditor.setSelectionRange(start - 1, start - 1); evaluateDocument(); }
-        } else if (['+', '-', '*', '/'].includes(key)) {
+        } else if (['+', '-', '*', '/', '%'].includes(key)) {
           if (hasSelection) { const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, start) + val.substring(end); tapeEditor.setSelectionRange(start, start); }
           const lineInfo = getCurrentLineInfo();
           if (!/\d/.test(lineInfo.text)) {
             const val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, lineInfo.start) + `${key}   ${lineInfo.text.replace(/^[+\-*/\s]*/, '')}` + val.substring(lineInfo.end); setCursorCoords(getCursorCoords().lineIdx, 4);
           } else {
-            const val = tapeEditor.value.replace(/\r/g, ''), formatted = formatLineString(lineInfo.text); tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${key}   ` + val.substring(lineInfo.end); tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
+            const val = tapeEditor.value.replace(/\r/g, ''), formatted = formatLineString(lineInfo.text); 
+            if (key === '%') {
+              tapeEditor.value = val.substring(0, lineInfo.start) + formatted + '%' + val.substring(lineInfo.end);
+              tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 1, lineInfo.start + formatted.length + 1);
+            } else {
+              tapeEditor.value = val.substring(0, lineInfo.start) + formatted + `\n${key}   ` + val.substring(lineInfo.end); 
+              tapeEditor.setSelectionRange(lineInfo.start + formatted.length + 5, lineInfo.start + formatted.length + 5);
+            }
           }
           evaluateDocument();
         } else {
@@ -909,7 +989,7 @@
 
     function saveState() {
       localStorage.setItem('calctape_final_session', JSON.stringify({
-        activeTab, notepadText,
+        activeTab, notepadText, memoryValue, isNumpadHidden,
         sheets: {
           1: { text: sheetsData[1].text, taxRate: sheetsData[1].taxRate },
           2: { text: sheetsData[2].text, taxRate: sheetsData[2].taxRate },
@@ -933,7 +1013,9 @@
           }
         }
         if (parsed.notepadText !== undefined) { notepadText = parsed.notepadText; notepadEditor.value = notepadText; }
-        if (parsed.activeTab) activeTab = parsed.activeTab;
+        if (parsed.memoryValue !== undefined) { memoryValue = parsed.memoryValue; updateMemoryIndicator(); }
+        if (parsed.isNumpadHidden !== undefined) isNumpadHidden = parsed.isNumpadHidden;
+	if (parsed.activeTab) activeTab = parsed.activeTab;
       } catch (e) { console.error('Failed to restore session:', e); }
     }
 
@@ -942,11 +1024,25 @@
     initRentCalculator();
     switchTab(activeTab || 1);
 
-    window.addEventListener('resize', () => {
-      localStorage.setItem('calc_win_width', window.outerWidth); localStorage.setItem('calc_win_height', window.outerHeight);
+window.addEventListener('resize', () => {
+      localStorage.setItem('calc_win_width', window.outerWidth); 
+      localStorage.setItem('calc_win_height', window.outerHeight);
     });
+
+    // Zero-overhead: Saves position only once, right as the window is closed
+    window.addEventListener('beforeunload', () => {
+      localStorage.setItem('calc_win_x', window.screenX);
+      localStorage.setItem('calc_win_y', window.screenY);
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
-      const savedW = parseInt(localStorage.getItem('calc_win_width'), 10), savedH = parseInt(localStorage.getItem('calc_win_height'), 10);
+      const savedX = parseInt(localStorage.getItem('calc_win_x'), 10);
+      const savedY = parseInt(localStorage.getItem('calc_win_y'), 10);
+      const savedW = parseInt(localStorage.getItem('calc_win_width'), 10);
+      const savedH = parseInt(localStorage.getItem('calc_win_height'), 10);
+      
+      // Restore position first, then size
+      if (!isNaN(savedX) && !isNaN(savedY)) window.moveTo(savedX, savedY);
       if (savedW && savedH) window.resizeTo(savedW, savedH);
     });
   </script>
