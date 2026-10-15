@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CalcTape - Multi-Sheet Paper Tape</title>
-  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect x='24' y='24' width='464' height='464' rx='72' fill='%2394a3b8' stroke='%23334155' stroke-width='12'/%3E%3Cpath d='M52 52h198v198H52z' fill='%2364748b'/%3E%3Cpath d='M262 52h198v198H262z' fill='%2364748b'/%3E%3Cpath d='M52 262h198v198H52z' fill='%23475569'/%3E%3Cpath d='M262 262h198v198H262z' fill='%23f59e0b'/%3E%3Cpath d='M133 90h36v43h43v36h-43v43h-36v-43H90v-36h43z' fill='%23fff'/%3E%3Crect x='316' y='133' width='90' height='26' rx='4' fill='%23fff'/%3E%3Cg transform='translate(151 361) rotate(45)'%3E%3Crect x='-45' y='-13' width='90' height='26' rx='4' fill='%23fff'/%3E%3Crect x='-13' y='-45' width='26' height='90' rx='4' fill='%23fff'/%3E%3C/g%3E%3Crect x='316' y='327' width='90' height='24' rx='4' fill='%23fef3c7'/%3E%3Crect x='316' y='371' width='90' height='24' rx='4' fill='%23fef3c7'/%3E%3C/svg%3E" />
   <style>
     :root {
       --bg-window: #eef2f6; --bg-tape: #ffffff; --border-color: #cbd5e1;
@@ -15,26 +15,29 @@
       --font-mono: "Consolas", "Courier New", monospace;
       --tape-font-size: 14px; --line-height: 24px;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: thin; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background-color: var(--bg-window); color: var(--text-main);
       height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none;
     }
-    .tab-bar { background: #e2e8f0; padding: 4px 6px 0; display: flex; align-items: center; gap: 2px; border-bottom: 1px solid var(--border-color); }
+    .tab-bar { background: #e2e8f0; padding: 2px 2px 0; display: flex; align-items: center; gap: 1px; border-bottom: 1px solid var(--border-color); overflow: hidden !important; scrollbar-width: none; }
+    .tab-bar::-webkit-scrollbar { display: none; }
     .tab-btn {
-      flex: 1; min-width: 0; background: #cbd5e1; border: 1px solid var(--border-color); border-bottom: none;
-      padding: 5px 2px; font-size: 11px; font-weight: 600; color: #475569; cursor: pointer;
-      border-radius: 5px 5px 0 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+      flex: 1 1 0; min-width: 0; background: #cbd5e1; border: 1px solid var(--border-color); border-bottom: none;
+      padding: 3px 1px; font-size: 10px; font-weight: 600; color: #475569; cursor: pointer;
+      border-radius: 3px 3px 0 0; display: inline-flex; align-items: center; justify-content: center; gap: 1px;
       transition: background 0.1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .tab-btn:hover { background: #e2e8f0; color: var(--text-main); }
-    .tab-btn.active { background: #ffffff; color: var(--accent-blue); border-color: var(--border-color); padding-top: 6px; margin-bottom: -1px; font-weight: 700; }
-    .toolbar { background: #ffffff; border-bottom: 1px solid var(--border-color); padding: 4px 6px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+    .tab-btn.active { background: #ffffff; color: var(--accent-blue); border-color: var(--border-color); padding-top: 4px; margin-bottom: -1px; font-weight: 700; }
+    .toolbar { background: #ffffff; border-bottom: 1px solid var(--border-color); padding: 3px 4px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
     .tool-btn {
-      background: white; border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 3px;
-      font-size: 11px; font-weight: 500; color: var(--text-main); cursor: pointer; display: inline-flex;
-      align-items: center; justify-content: center; gap: 2px; height: 25px; min-width: 0; white-space: nowrap; transition: all 0.08s;
+      background: white; border: 1px solid var(--border-color); border-radius: 3px; padding: 2px 2px;
+      font-size: 10px; font-weight: 500; color: var(--text-main); cursor: pointer; display: inline-flex;
+      align-items: center; justify-content: center; gap: 2px; height: 23px; min-width: 0; white-space: nowrap; transition: all 0.08s;
     }
     .tool-btn:hover { background: #f1f5f9; border-color: var(--border-dark); }
     .tool-btn:active { background: #e2e8f0; }
@@ -50,10 +53,12 @@
     .notepad-toolbar { background: #f8fafc; border-bottom: 1px solid var(--border-color); padding: 6px 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .notepad-editor { flex: 1; width: 100%; padding: 14px 18px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b; border: none; outline: none; resize: none; overflow: auto; user-select: text; }
     
-    .rent-container { flex: 1; background: #ffffff; margin: 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border-dark); display: none; flex-direction: column; overflow-y: auto; padding: 20px; }
-    .rent-header { font-size: 14px; color: var(--text-main); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; font-weight: 600; }
-    .rent-grid { display: grid; grid-template-columns: 140px 1fr; gap: 12px; align-items: center; font-size: 13px; max-width: 500px; }
-    .rent-input { padding: 6px; border: 1px solid var(--border-color); border-radius: 3px; font-family: inherit; font-size: 13px; outline: none; }
+    .rent-container { flex: 1; background: #ffffff; margin: 4px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid var(--border-dark); display: none; flex-direction: column; overflow-y: auto; padding: 10px; }
+    .rent-header { font-size: 12px; color: var(--text-main); margin-bottom: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .rent-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .rent-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; }
+    .rent-label { font-weight: 500; color: #475569; white-space: nowrap; font-size: 11px; }
+    .rent-input { width: 96px; padding: 3px 6px; font-size: 12px; text-align: center; border: 1px solid var(--border-color); border-radius: 3px; font-family: var(--font-mono); outline: none; }
     .rent-input:focus { border-color: var(--accent-blue); }
     
     .numpad-panel { width: 195px; min-width: 195px; background: #f1f5f9; border-left: 1px solid var(--border-dark); display: flex; flex-direction: column; padding: 6px; gap: 4px; }
@@ -77,15 +82,15 @@
     #toast { position: fixed; bottom: 42px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #f8fafc; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 999; }
     #toast.show { opacity: 1; }
   </style>
-</head>
+<script src="/_aistudio-iframe.js?v=6634132a"></script></head>
 <body>
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="1" title="Sheet 1 (Alt+1)">S1</button>
     <button class="tab-btn" data-tab="2" title="Sheet 2 (Alt+2)">S2</button>
     <button class="tab-btn" data-tab="3" title="Sheet 3 (Alt+3)">S3</button>
     <button class="tab-btn" data-tab="4" title="Sheet 4 (Alt+4)">S4</button>
-    <button class="tab-btn" data-tab="5" title="Dedicated Notepad (Alt+5)">📝 Note</button>
-    <button class="tab-btn" data-tab="6" title="Rent Calculator (Alt+6)">📅 Rent</button>
+    <button class="tab-btn" data-tab="5" title="Dedicated Notepad (Alt+5)">Note</button>
+    <button class="tab-btn" data-tab="6" title="Rent Calculator (Alt+6)">Rent</button>
   </nav>
 
   <header class="toolbar" id="calcToolbar">
@@ -127,31 +132,47 @@
       <textarea id="notepadEditor" class="notepad-editor" spellcheck="true" placeholder="Type or paste notes here..."></textarea>
     </section>
 
-    <section class="rent-container" id="rentContainer">
-      <h2 class="rent-header">Rent Duration Calculator</h2>
-      <div class="rent-grid">
-        <label>Start Date:</label>
-        <input type="text" id="rentStart" class="rent-input" placeholder="DD/MM/YY" maxlength="10">
-        <label>End Date:</label>
-        <input type="text" id="rentEnd" class="rent-input" placeholder="DD/MM/YY" maxlength="10">
-        <label>Monthly Rate (₹):</label>
-        <input type="number" id="rentRate" value="2450" class="rent-input">
-        <label></label>
-        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: 5px;">
-          <input type="checkbox" id="rentInclusive" checked>
-          <span>Include end date (add 1 day)</span>
+    <section class="rent-container" id="rentContainer" style="display: none; padding: 6px; flex-direction: column; overflow-x: hidden; overflow-y: auto;">
+      <h2 style="font-size: 11px; font-weight: 700; color: #0f172a; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+        <span>Rent Calculator</span>
+        <span style="font-size: 9px; color: #64748b; font-weight: 400;">30d</span>
+      </h2>
+
+      <!-- Compact Side-by-Side Dates -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+        <div>
+          <label style="font-size: 9px; font-weight: 600; color: #64748b; display: block; margin-bottom: 1px;">Start</label>
+          <input type="text" id="rentStart" class="rent-input" style="width: 100%; height: 22px; padding: 1px 2px; font-size: 11px; text-align: center;" placeholder="DD/MM/YY" maxlength="10">
+        </div>
+        <div>
+          <label style="font-size: 9px; font-weight: 600; color: #64748b; display: block; margin-bottom: 1px;">End</label>
+          <input type="text" id="rentEnd" class="rent-input" style="width: 100%; height: 22px; padding: 1px 2px; font-size: 11px; text-align: center;" placeholder="DD/MM/YY" maxlength="10">
+        </div>
+      </div>
+
+      <!-- Rate & +1 Day in Single Compact Row -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 2px; margin-bottom: 4px;">
+        <div style="display: flex; align-items: center; gap: 2px;">
+          <label style="font-size: 10px; font-weight: 600; color: #475569; white-space: nowrap;">Rate/Mo:</label>
+          <input type="number" id="rentRate" value="2450" class="rent-input" style="width: 58px; height: 22px; padding: 1px 2px; font-size: 11px; text-align: center;">
+        </div>
+        <label style="display: flex; align-items: center; gap: 2px; cursor: pointer; font-size: 10px; color: #64748b; white-space: nowrap;">
+          <input type="checkbox" id="rentInclusive" checked style="cursor: pointer; margin: 0;">
+          <span>+1 day</span>
         </label>
       </div>
-      <div style="margin-top: 15px; margin-bottom: 25px;">
-        <button class="tool-btn" id="btnCalcRent" style="padding: 6px 20px; height: auto; font-size: 12px; background: var(--accent-blue); color: white; border: none;">Calculate Rent</button>
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 6px; max-width: 600px;">
+
+      <!-- Calculate Button -->
+      <button class="tool-btn" id="btnCalcRent" style="width: 100%; height: 24px; font-size: 11px; font-weight: 600; background: var(--accent-blue); color: white; border: none; border-radius: 3px; cursor: pointer; margin-bottom: 4px;">Calculate Rent</button>
+
+      <!-- Compact Output & Copy -->
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <label style="font-size: 13px; font-weight: 600;">Result Format:</label>
-          <button class="tool-btn" id="btnCopyRent">📋 Copy Output</button>
+          <span style="font-size: 10px; font-weight: 700; color: #1e293b;">Result:</span>
+          <button class="tool-btn" id="btnCopyRent" style="height: 18px; padding: 0 4px; font-size: 9px;">📋 Copy</button>
         </div>
-        <textarea id="rentOutput" readonly style="width: 100%; height: 60px; padding: 10px; font-family: var(--font-mono); font-size: 13px; border: 1px solid var(--border-color); border-radius: 3px; background: #f8fafc; resize: none;" placeholder="Output will appear here..."></textarea>
-        <div id="rentBreakdown" style="font-size: 11px; color: var(--text-muted); margin-top: 4px;"></div>
+        <textarea id="rentOutput" readonly style="width: 100%; height: 44px; padding: 3px 4px; font-family: var(--font-mono); font-size: 10px; line-height: 1.25; border: 1px solid var(--border-color); border-radius: 3px; background: #f8fafc; resize: none; overflow-x: hidden; overflow-y: auto;" placeholder="Output..."></textarea>
+        <div id="rentBreakdown" style="font-size: 9px; color: var(--text-muted); line-height: 1.2; word-break: break-word;"></div>
       </div>
     </section>
 
@@ -206,6 +227,7 @@
     <div id="calcStatusWrap" style="display: flex; width: 100%; justify-content: space-between; align-items: center;">
       <div class="statusbar-group">
         <span id="lineCountLabel">0 lines</span>
+        <span style="color:#94a3b8; font-size:10px; margin-left:4px;" title="CalcTape Version">v15102601</span>
       </div>
       
       <div class="statusbar-group" style="align-items: center; gap: 4px;">
@@ -233,17 +255,7 @@
   </footer>
 
   <div id="toast">Message</div>
-<script>
-    const versionNode = Array.from(document.childNodes).find(n => n.nodeType === 8);
-    if (versionNode) {
-      const vText = `v${versionNode.nodeValue.trim()}`;
-      document.title = `CalcTape - ${vText}`;
-      const vSpan = document.createElement('span');
-      vSpan.textContent = vText;
-      vSpan.style.cssText = "margin-left: auto; font-size: 11px; font-weight: 700; color: #94a3b8; padding: 0 10px; user-select: text;";
-      document.querySelector('.tab-bar').appendChild(vSpan);
-    }
-
+  <script>
     const defaultInitialText = "+   3,12,184.00   Base cost\n+     21,346.00   Shipping\n---------------\n=   3,33,530.00   Subtotal\n+   ";
     const sheetsData = {
       1: { text: defaultInitialText, taxRate: 18, undoStack: [], redoStack: [] },
@@ -252,10 +264,10 @@
       4: { text: "+   ", taxRate: 18, undoStack: [], redoStack: [] }
     };
 
-let activeTab = 1;
+    let activeTab = 1;
     let memoryValue = 0;
-    let isNumpadHidden = false;
-    let notepadText = "Welcome to your dedicated notepad.\nSpell check is active.\nUse '✨ AI Clean Up' to instantly proofread rough notes.";
+    let isNumpadHidden = localStorage.getItem('calctape_numpad_hidden') === '1';
+    let notepadText = "Welcome to your dedicated notepad.\nSpell check is active.\nType your notes here...";
 
     const fontSlider = document.getElementById('fontSlider');
     const fontSizeVal = document.getElementById('fontSizeVal');
@@ -387,7 +399,6 @@ let activeTab = 1;
       let op = '+', rest = sanitized;
       if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
       
-      // Preserve standard percentage marks during formatting
       const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))\s*(%?)(.*)$/);
       if (match) {
         const num = parseFloat(match[1].replace(/,/g, '')) || 0;
@@ -430,21 +441,27 @@ let activeTab = 1;
       let newLines = [], subtotalNeedsUpdate = false, lineBlockMap = [], blockSums = [], running = 0;
       let applyToRunning = true, lastValue = 0;
 
+      let prevWasDivider = false;
       lines.forEach((line) => {
         let trimmed = line.trim();
         if (trimmed === '') {
           blockSums.push(Math.round(running * 100) / 100); lineBlockMap.push(blockSums.length - 1);
-          running = 0; applyToRunning = true; newLines.push(line); return;
+          running = 0; applyToRunning = true; prevWasDivider = false; newLines.push(line); return;
         }
         lineBlockMap.push(blockSums.length);
 
-        if (trimmed.startsWith('---') || trimmed.startsWith('===')) { applyToRunning = true; newLines.push('---------------'); return; }
+        if (trimmed.startsWith('---') || trimmed.startsWith('===')) { applyToRunning = true; prevWasDivider = true; newLines.push('---------------'); return; }
 
-        if (trimmed.startsWith('=')) {
+        const isExplicitSub = trimmed.startsWith('=');
+        const isImplicitSub = prevWasDivider && !trimmed.match(/^t[\+\-]/i);
+        prevWasDivider = false;
+
+        if (isExplicitSub || isImplicitSub) {
           applyToRunning = true;
           const total = Math.round(running * 100) / 100;
-          const noteMatch = line.match(/^=[^a-zA-Z\d]*[\d,.]*\s*(.*)$/);
-          const targetSub = `=   ${numFormatter.format(total).padStart(11, ' ')}${(noteMatch && noteMatch[1]) ? `   ${noteMatch[1].trim()}` : ''}`;
+          const noteMatch = line.match(/^[+=\s]*[\d,.]*\s*(.*)$/);
+          const note = (noteMatch && noteMatch[1] && !noteMatch[1].toLowerCase().startsWith('tax')) ? `   ${noteMatch[1].trim()}` : '';
+          const targetSub = `=   ${numFormatter.format(total).padStart(11, ' ')}${note}`;
           if (line !== targetSub) subtotalNeedsUpdate = true;
           newLines.push(targetSub); return;
         }
@@ -479,7 +496,6 @@ let activeTab = 1;
         let op = '+', rest = sanitized;
         if (['+', '-', '*', '/'].includes(sanitized.charAt(0))) { op = sanitized.charAt(0); rest = sanitized.substring(1).trim(); }
         
-        // Includes logic to detect percentage sign for smart math
         const match = rest.match(/^((?:-?\d[\d,]*(?:\.\d*)?)|(?:-?\.\d+))\s*(%?)(.*)$/);
         
         if (match) {
@@ -615,6 +631,18 @@ let activeTab = 1;
           setCursorCoords(lineIdx + 2, 4); evaluateDocument(); pushSnapshot(); return;
         }
 
+        if (lineInfo.text.trim().startsWith('---') || lineInfo.text.trim().startsWith('===')) {
+          const nextIdx = lineIdx + 1;
+          if (nextIdx >= lines.length || lines[nextIdx].trim() === '') {
+            lines.splice(nextIdx, 0, '=   0.00', '+   ');
+            tapeEditor.value = lines.join('\n');
+            setCursorCoords(nextIdx + 1, 4);
+          } else {
+            setCursorCoords(nextIdx, 4);
+          }
+          evaluateDocument(); pushSnapshot(); return;
+        }
+
         formatCurrentLineIfEdited();
 
         if (!/\d/.test(lineInfo.text) && lineIdx === 0 && !hasSubtotalBelow(lineIdx)) {
@@ -748,7 +776,7 @@ let activeTab = 1;
         rentContainer.style.display = 'flex'; calcStatusWrap.style.display = 'none'; notepadStatusWrap.style.display = 'none';
       } else {
         notepadContainer.style.display = 'none'; rentContainer.style.display = 'none'; tapeContainer.style.display = 'flex'; calcToolbar.style.display = 'grid';
-if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classList.remove('hidden');
+        if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classList.remove('hidden');
         notepadStatusWrap.style.display = 'none'; calcStatusWrap.style.display = 'flex';
         const sheet = sheetsData[activeTab];
         tapeEditor.value = sheet.text || '+   '; taxRateSelect.value = sheet.taxRate || 18; currentTaxStatus.textContent = `${sheet.taxRate || 18}%`;
@@ -788,8 +816,18 @@ if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classL
     document.getElementById('btnCopyTape').addEventListener('click', copyTapeResults);
     document.getElementById('btnSubtotalBar').addEventListener('click', insertSubtotal);
     document.getElementById('btnTabNote').addEventListener('click', () => { tapeEditor.focus(); const pos = tapeEditor.selectionStart, val = tapeEditor.value.replace(/\r/g, ''); tapeEditor.value = val.substring(0, pos) + '   ' + val.substring(pos); tapeEditor.setSelectionRange(pos + 3, pos + 3); });
-    document.getElementById('btnToggleNumpad').addEventListener('click', () => { isNumpadHidden = !isNumpadHidden; numpadPanel.classList.toggle('hidden', isNumpadHidden); saveState(); });
-    document.getElementById('btnCloseNumpad').addEventListener('click', () => { isNumpadHidden = true; numpadPanel.classList.add('hidden'); saveState(); });
+    document.getElementById('btnToggleNumpad').addEventListener('click', () => { 
+      isNumpadHidden = !isNumpadHidden; 
+      numpadPanel.classList.toggle('hidden', isNumpadHidden); 
+      localStorage.setItem('calctape_numpad_hidden', isNumpadHidden ? '1' : '0');
+      saveState(); 
+    });
+    document.getElementById('btnCloseNumpad').addEventListener('click', () => { 
+      isNumpadHidden = true; 
+      numpadPanel.classList.add('hidden'); 
+      localStorage.setItem('calctape_numpad_hidden', '1');
+      saveState(); 
+    });
     document.getElementById('taxRateSelect').addEventListener('change', (e) => { pushSnapshot(); sheetsData[activeTab].taxRate = Number(e.target.value); currentTaxStatus.textContent = `${sheetsData[activeTab].taxRate}%`; evaluateDocument(); pushSnapshot(); showToast(`Tax rate set to ${sheetsData[activeTab].taxRate}%`); });
 
     document.querySelectorAll('.pad-btn').forEach(btn => {
@@ -862,9 +900,6 @@ if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classL
       });
     });
 
-    /* -------------------------------------------------------------
-       NOTEPAD LOGIC (Tab 5) - Includes Gemini AI Rewrite
-       ------------------------------------------------------------- */
     function updateNotepadStats() {
       const text = notepadEditor.value, lines = text ? text.split(/\r\n|\r|\n/).length : 0, words = text.trim() ? text.trim().split(/\s+/).length : 0;
       npLines.textContent = `Lines: ${lines}`; npWords.textContent = `Words: ${words}`; npChars.textContent = `Characters: ${text.length}`;
@@ -884,9 +919,6 @@ if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classL
     document.getElementById('btnCopyNote').addEventListener('click', () => navigator.clipboard.writeText(notepadEditor.value).then(() => showToast('Notepad copied!')));
     document.getElementById('btnClearNote').addEventListener('click', () => { notepadEditor.value = ''; notepadText = ''; updateNotepadStats(); saveState(); showToast('Notepad cleared'); });
 
-    /* -------------------------------------------------------------
-       RENT CALCULATOR LOGIC (Tab 6) - Smart Date Shorthand
-       ------------------------------------------------------------- */
     function parseRentDate(val, isEnd) {
       if (!val) return null;
       let s = val.replace(/[^\d]/g, ''), d, m, y, now = new Date();
@@ -1015,7 +1047,7 @@ if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classL
         if (parsed.notepadText !== undefined) { notepadText = parsed.notepadText; notepadEditor.value = notepadText; }
         if (parsed.memoryValue !== undefined) { memoryValue = parsed.memoryValue; updateMemoryIndicator(); }
         if (parsed.isNumpadHidden !== undefined) isNumpadHidden = parsed.isNumpadHidden;
-	if (parsed.activeTab) activeTab = parsed.activeTab;
+        if (parsed.activeTab) activeTab = parsed.activeTab;
       } catch (e) { console.error('Failed to restore session:', e); }
     }
 
@@ -1023,28 +1055,6 @@ if (isNumpadHidden) numpadPanel.classList.add('hidden'); else numpadPanel.classL
     setTapeFontSize(localStorage.getItem('calc_tape_font_pt') || 10);
     initRentCalculator();
     switchTab(activeTab || 1);
-
-window.addEventListener('resize', () => {
-      localStorage.setItem('calc_win_width', window.outerWidth); 
-      localStorage.setItem('calc_win_height', window.outerHeight);
-    });
-
-    // Zero-overhead: Saves position only once, right as the window is closed
-    window.addEventListener('beforeunload', () => {
-      localStorage.setItem('calc_win_x', window.screenX);
-      localStorage.setItem('calc_win_y', window.screenY);
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedX = parseInt(localStorage.getItem('calc_win_x'), 10);
-      const savedY = parseInt(localStorage.getItem('calc_win_y'), 10);
-      const savedW = parseInt(localStorage.getItem('calc_win_width'), 10);
-      const savedH = parseInt(localStorage.getItem('calc_win_height'), 10);
-      
-      // Restore position first, then size
-      if (!isNaN(savedX) && !isNaN(savedY)) window.moveTo(savedX, savedY);
-      if (savedW && savedH) window.resizeTo(savedW, savedH);
-    });
   </script>
 </body>
 </html>
